@@ -60,6 +60,30 @@ classdef SignalSimulator
             
         end
         
+        function showConnections(obj, figNum)
+            
+            obj.showMap(figNum);
+            hold on;
+            
+            n = length(obj.nodeList);            
+            for k = 1:n
+                
+                node = obj.nodeList(k);
+                
+                for a = obj.nodeList(obj.adjMat(k,:))
+                    
+                    xy = [node.loc a.loc];
+                    plot(xy(1,:),xy(2,:),'k');
+                    
+                end
+                
+                
+            end
+            
+            hold off;
+            
+        end
+        
         function plotPath(obj, figNum, t)
             
             figure(figNum);
