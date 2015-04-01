@@ -29,3 +29,10 @@ sim.printDist;
 t = linspace(0,5,100);
 sim.plotPath(1,t);
 sim.showConnections(1);
+
+%% Measurement Tests
+tgtLoc = tgtPath(0);
+
+sim.measTgts(tgtLoc);
+sim.exchangeMeas;
+sim.getRawEstimates;

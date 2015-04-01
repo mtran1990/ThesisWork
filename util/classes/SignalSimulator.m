@@ -115,6 +115,42 @@ classdef SignalSimulator
         
         end
             
+        
+        function measTgts(obj, tgtLoc)
+            
+            for a = obj.nodeList
+                a.measureTgts(tgtLoc);
+            end
+            
+        end
+        
+        function exchangeMeas(obj)
+            % tells each node to exchange its measurements with its
+            % neighbors
+            n = length(obj.nodeList);
+            
+            for k=1:n
+                node = obj.nodeList(k);
+                
+                neighbors = obj.nodeList(obj.adjMat(k,:));
+                node.receiveMeas(neighbors);
+                
+            end
+            
+        end
+        
+        function getRawEstimates(obj)
+            % tells each node to use the pooled measurements to give an
+            % intial estimate of the target location
+            n = length(obj.nodeList);
+            
+            for k=1:n
+                node = obj.nodeList(k);
+                node.estimateRawLoc;
+            end
+            
+        end
+        
     end
         
     methods (Access = private)

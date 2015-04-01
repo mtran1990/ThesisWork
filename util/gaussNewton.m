@@ -2,6 +2,11 @@
 % assuming "r_i" is the distance error
 
 function [beta,iter] = gaussNewton(loc, R, beta, threshAbs, maxit)
+% inputs:
+% loc   : locations of the sensors that produced the R vector, the size
+%         should be nx2, where n is the number of measurements
+% R     : range values of the measurements, the size should be nx1
+% beta  : optional, a starting guess for the algorithm
 
 if(nargin<3), beta = [0; 0]; end
 if(nargin<4), threshAbs = 1e-4; end
