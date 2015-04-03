@@ -9,25 +9,28 @@ classdef SignalSimulator
         nodeList
         mapDims
         
+        mGenerator
     end
     
     %% public methods
     methods (Access = public)
         % constructor
-        function obj = SignalSimulator(op, arg1, arg2, arg3, arg4)
+        function obj = SignalSimulator(op, params)
             
             switch op
                 case 0
-                    if(nargin == 5)
-                        obj.tgtPath = arg1;
-                        obj.nodeList = arg2;
-                        obj.adjMat = arg3;
-                        obj.mapDims = arg4;
+                    if(nargin == 2)
+                        obj.tgtPath = params.tgtPath;
+                        obj.nodeList = params.nodeList;
+                        obj.adjMat = params.adjMat;
+                        obj.mapDims = params.mapDims;
+                        
+                        obj.mGenerator = MeasGenerator(params.mParams);
                     else
                         error('Incorrect number of arguments');
                     end
                 case 1
-                    if(nargin == 3)
+                    if(nargin == 2)
                         obj.tgtPath = arg1;
                         % arg2: # of nodes
                         % use a Gaussian Distribution to set node locations

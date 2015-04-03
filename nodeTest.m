@@ -22,7 +22,17 @@ adjMat = logical([0 0 1 1; 0 0 1 0; 1 1 0 1; 1 0 1 0]);
 
 mapDims = [12 12];
 
-sim = SignalSimulator(0,tgtPath,nodeList,adjMat,mapDims);
+Bfa = 1E-7;
+Pd = 0.90;
+
+n0 = 0.2;
+
+mParams = struct('Bfa', Bfa, 'Pd', Pd, 'n0', n0);
+
+params = struct('tgtPath', tgtPath, 'nodeList', nodeList, ...
+    'adjMat', adjMat, 'mapDims', mapDims, 'mParams', mParams);
+
+sim = SignalSimulator(0,params);
 
 sim.showMap(1);
 sim.printDist;
@@ -34,5 +44,5 @@ sim.showConnections(1);
 tgtLoc = tgtPath(0);
 
 sim.measTgts(tgtLoc);
-sim.exchangeMeas;
-sim.getRawEstimates;
+% sim.exchangeMeas;
+% sim.getRawEstimates;
