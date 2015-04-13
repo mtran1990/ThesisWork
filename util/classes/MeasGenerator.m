@@ -14,10 +14,10 @@ classdef MeasGenerator < handle
             obj.n0 = params.n0;
         end
         
-        function out = getMeasurements(tgtLoc, mapDim)
+        function out = getMeasurements(obj, tgtLoc, mapDim)
 
-            clutter = getClutter(mapDim);
-            meas = genMeas(tgtLoc);
+            clutter = obj.genClutter(mapDim);
+            meas = obj.genMeas(tgtLoc);
             
             out = [clutter meas];
             
@@ -34,15 +34,19 @@ classdef MeasGenerator < handle
             
             m = poissrnd(obj.Bfa*(x*y));
             
-            clutter = -[x;y]/2+[x 0; 0 y]*rand(2,m);
+            clutter = -[x;y]/2*ones(1,m)+[x 0; 0 y]*rand(2,m);
+            
+%             if(m>0)
+%                 disp('check');
+%             end
             
         end
         
         function meas = genMeas(obj, tgtLoc)
             % assume tgtLoc is 2xn, where n is the # of tgts
             [~,n] = size(tgtLoc);
-            idx = rand(1,n)>obj.Pd;            
-            meas = tgtLoc(:,idx);
+            idx = rand(1,n)<obj.Pd;            
+            meas = tgtLoc(:,idx)+obj.n0^2*randn(1);
         end
         
     end    

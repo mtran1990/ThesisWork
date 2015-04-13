@@ -22,10 +22,10 @@ adjMat = logical([0 0 1 1; 0 0 1 0; 1 1 0 1; 1 0 1 0]);
 
 mapDims = [12 12];
 
-Bfa = 1E-7;
+Bfa = 1E-5;
 Pd = 0.90;
 
-n0 = 0.2;
+n0 = 0.5;
 
 mParams = struct('Bfa', Bfa, 'Pd', Pd, 'n0', n0);
 

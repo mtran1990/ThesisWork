@@ -122,7 +122,8 @@ classdef SignalSimulator
         function measTgts(obj, tgtLoc)
             
             for a = obj.nodeList
-                a.measureTgts(tgtLoc);
+                meas = obj.mGenerator.getMeasurements(tgtLoc, obj.mapDims);
+                a.setTgts(meas);
             end
             
         end

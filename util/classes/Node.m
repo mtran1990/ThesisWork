@@ -29,20 +29,8 @@ classdef Node < handle
             
         end
         
-        function measureTgts(obj, tgtLoc, n0)
-            % assume tgtLoc is 2xn, where n is the # of tgts
-            % tgtMeas will be 1xn
-            [~,n] = size(tgtLoc);
-            obj.tgtMeas = zeros(n,1);
-            
-            xy = obj.loc*ones(1,n);
-            
-            obj.tgtMeas = sqrt(sum((tgtLoc-xy).^2,1));
-            
-            if(exist('n0','var'))
-                obj.tgtMeas = obj.tgtMeas + n0.^2*randn(n,1);
-            end
-                        
+        function setTgts(obj, tgtMeas)
+            obj.tgtMeas = tgtMeas;                        
         end
         
         function receiveMeas(obj, nodes)                        
