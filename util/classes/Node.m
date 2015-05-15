@@ -30,7 +30,7 @@ classdef Node < handle
         end
         
         function setTgts(obj, tgtMeas)
-            obj.tgtMeas = tgtMeas;                        
+            obj.tgtMeas = tgtMeas;
         end
         
         function receiveMeas(obj, nodes)                        

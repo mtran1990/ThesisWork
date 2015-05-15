@@ -46,7 +46,7 @@ classdef MeasGenerator < handle
             % assume tgtLoc is 2xn, where n is the # of tgts
             [~,n] = size(tgtLoc);
             idx = rand(1,n)<obj.Pd;            
-            meas = tgtLoc(:,idx)+obj.n0^2*randn(1);
+            meas = tgtLoc(:,idx)+obj.n0^2*randn(size(tgtLoc(:,idx)));
         end
         
     end    

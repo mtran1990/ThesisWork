@@ -28,7 +28,7 @@ classdef KCFilter < handle
             sigM2 = 0.1;
             
             Q_ = [dt^4/4 dt^3/2; dt^3/2 dt^2]*obj.sigA;
-            obj.Q = [obj.Q zeros(2); zeros(2) Q_];
+            obj.Q = [Q_ zeros(2); zeros(2) Q_];
             
             obj.R = [sigM2 0; 0 sigM2];
             
