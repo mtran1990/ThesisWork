@@ -6,7 +6,7 @@ classdef KCFilter < handle
         H
         Q
         R
-        sigA
+        sigA2
         xu
         P
         xp
@@ -17,23 +17,24 @@ classdef KCFilter < handle
     %% methods
     methods (Access = public)
         
-        function obj = KCFilter(dt,x0,P0)
-            obj.F = [1 dt; 0 1];
-            obj.F = [obj.F zeros(2,2); zeros(2,2) obj.F];
+        function obj = KCFilter(params)
+            dt = params.dt;
+            F_ = [1 dt; 0 1];
+            obj.F = [F_ zeros(2,2); zeros(2,2) F_];
 
             obj.H = [1 0 0 0; 0 0 1 0];
             
             
-            obj.sigA = 0.1;
-            sigM2 = 0.1;
+            obj.sigA2 = params.sigA2;
+            sigM2 = params.M2;
             
-            Q_ = [dt^4/4 dt^3/2; dt^3/2 dt^2]*obj.sigA;
+            Q_ = [dt^4/4 dt^3/2; dt^3/2 dt^2]*obj.sigA2;
             obj.Q = [Q_ zeros(2); zeros(2) Q_];
             
             obj.R = [sigM2 0; 0 sigM2];
             
-            obj.xp = x0;
-            obj.P = P0;
+            obj.xp = params.x0;
+            obj.P = params.P0;
         end
         
         function addMeasurement(obj, z)

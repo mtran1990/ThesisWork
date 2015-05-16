@@ -33,7 +33,7 @@ classdef Node < handle
             obj.tgtMeas = tgtMeas;
         end
         
-        function receiveMeas(obj, nodes)                        
+        function receiveMeas(obj, nodes)
             % function to fill allRanges with the measurements from the
             % current node and all its neighbors
             % takes in a list of nodes who are the current node's neighbors            
