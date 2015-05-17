@@ -15,6 +15,7 @@ classdef MNinitiator < handle
         % sigA2 :    std. dev. of acceleration in model
         % sigM2 :    variance of measurements
         % Kap   :    gate size parameter
+        % gamG  :    gate theshold
         sParams
         
         % list of all tracks
@@ -22,7 +23,7 @@ classdef MNinitiator < handle
         
         % 4xN vector tracking the state of N tracks
         % [s m mbar n]'
-        % s    : deleted, tentative, or confirmed state
+        % s    : deleted, tentative, or confirmed state (0, 1, or 2)
         % m    : # of measurements collected since creation
         % mbar : # of missed measurements
         % n    : age of initiator
@@ -53,7 +54,10 @@ classdef MNinitiator < handle
                 
             else
                 % need to gate the measurements
+                [vMat, tmpList] = getValidationMat(z);
                 
+                % cluster measurements in vMat?
+                [measVec, tgtsVec, numClust] = obj.clusterTgts(vMat);
             end
             
             
@@ -86,7 +90,9 @@ classdef MNinitiator < handle
             Kap = obj.sParams.Kap;
             maxV = obj.sParams.maxV;
             
-            P0 = diag([sigA2 maxV/Kap sigA2 maxV/Kap]);
+            sigV2 = (maxV/Kap)^2;
+            
+            P0 = diag([sigA2 sigV2 sigA2 sigV2]);
         end
         
         function params = genKFparams(obj,x0,P0)
@@ -95,6 +101,122 @@ classdef MNinitiator < handle
             params = rmfield(params,{'maxV','Kap'});
             params.x0 = x0;
             params.P0 = P0;
+            
+        end
+        
+        function [vMat, tmpList] = getValidationMat(obj,z)
+            
+            % N: # of measurements
+            N = size(z,2);
+            
+            % M: # of tracks (confirmed and tentative for now)
+            validTracks = obj.trackStates(1,:) ~= 0;
+            M = sum(validTracks);
+            
+            vMat = zeros(N,M);
+            
+            tmpList = obj.trackList(validTracks);
+            
+            for i=1:N
+                for j=1:M
+                    
+                    S = tmpList(j).P;
+                    yhat = tmpList(j).H*tmpList(j).xp;
+                    
+                    y = z(:,i);
+                    
+                    if(insideGate(S,y,yhat))
+                        vMat(i,j) = 1;
+                    end
+                    
+                end
+            end
+            
+        end
+        
+        function inside = insideGate(obj,S,y,yhat)
+            
+            U = cholcov(S);
+            
+            testStat = norm( (U.'\(y-yhat)), 2);
+            
+            if testStat<= obj.sParams.gamG
+                inside = true;
+            else
+                inside = false;
+            end
+            
+        end
+        
+        % returns a cell array of tgts separated into clusters
+        function [measInClus, tgtsInClus, numClust, vCopy] ...
+                = clusterTgts(~, vMat)
+            
+            vCopy = vMat;
+            
+            [m,n] = size(vMat);
+            measInClus = num2cell(1:m);
+                                    
+            % steps: remove null rows and columns
+            % use OR operator to cluster
+            zeroRows = sum(vCopy,2)==0;
+            measInClus(zeroRows) = [];
+                        
+            zeroCols = sum(vCopy,1)==0;
+            
+            vCopy(zeroRows,:) = [];
+            vCopy(:,zeroCols) = [];
+            
+            % starting from first target, find other measurements in the
+            % measurement gate, then combine those rows
+            for k = 1:size(vCopy,2)
+                
+                % search through other measurements in the same column
+                % (target)
+                idx = find(vCopy(:,k)==1);
+                
+                % if there is more than one index, then there are multiple
+                % measurements in the measurement gate
+                if(length(idx)>1)
+                    
+                    % i1: the first measurement in the current
+                    % target's measurement gate
+                    i1 = idx(1);
+                    
+                    % loop over all other measurements
+                    for j = 2:length(idx)
+                        
+                        inew = idx(j);
+                        % combine rows
+                        vCopy(i1,:) = or(vCopy(i1,:),vCopy(inew,:));
+                        
+                        % add measurements to current cluster
+                        measInClus{i1} = [measInClus{i1} ...
+                            measInClus{inew}];
+                        
+                        % delete old row in vCopy and measInClus
+                        vCopy(inew,:) = [];
+                        measInClus(inew) = [];
+                    end
+                    
+                end
+                                
+            end
+            
+            % pull out targets in each cluster
+            % we have n targets, but we have removed columns of all zeros
+            tgtNums = 1:n;
+            tgtNums = tgtNums(~zeroCols);
+            
+            numClust = size(vCopy,1);
+            
+            % in the final vCopy, each row is a cluster
+            % 1's indicate that the target of the associated column is part
+            % of that cluster
+            tgtsInClus = cell(1,numClust);            
+            for k = 1:numClust
+                tgtsInClus{k} = tgtNums(logical(vCopy(k,:)));
+            end
             
         end
         
