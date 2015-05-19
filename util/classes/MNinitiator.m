@@ -57,7 +57,11 @@ classdef MNinitiator < handle
                 [vMat, tmpList] = getValidationMat(z);
                 
                 % cluster measurements in vMat?
-                [measVec, tgtsVec, numClust] = obj.clusterTgts(vMat);
+                [measVec, tgtsVec, numClust, measOutClus] = ...
+                    obj.clusterTgts(vMat);
+                
+                % TODO: update tracks based on clusters
+                %       create new tracks from rest of measurements
             end
             
             
@@ -81,6 +85,19 @@ classdef MNinitiator < handle
             obj.trackList(k) = KCFilter(params);
             
         end       
+        
+        function updateTracks(obj,measVec,tgtsVec,tList,z,numClust)
+            
+            for k = 1:numClust
+                
+                zClust = z(measVec{k});
+                tgts = tList(tgtsVec{k});
+                
+            end
+            
+            
+            
+        end
         
         function P0 = genP0mat(obj)
             
@@ -134,6 +151,29 @@ classdef MNinitiator < handle
             
         end
         
+        % might consider trying to optimize these for loops later
+        %{
+        function yhat = getEstimatesFromTrack(~,list)
+            
+            % assuming all H's are the same (all sensors the same)
+            H = list(1).H;
+            
+            yhat = H*[list.xp];
+            
+            % Uncomment if H's are different
+            %{
+            M = length(list);
+            yhat = zeros(2,M);
+            for k = 1:M
+                
+                yhat(:,k) = list(k).H*list(k).xp;
+                
+            end
+            %}
+            
+        end
+        %}
+        
         function inside = insideGate(obj,S,y,yhat)
             
             U = cholcov(S);
@@ -149,7 +189,7 @@ classdef MNinitiator < handle
         end
         
         % returns a cell array of tgts separated into clusters
-        function [measInClus, tgtsInClus, numClust, vCopy] ...
+        function [measInClus, tgtsInClus, numClust, measOutClus, vCopy] ...
                 = clusterTgts(~, vMat)
             
             vCopy = vMat;
@@ -160,6 +200,8 @@ classdef MNinitiator < handle
             % steps: remove null rows and columns
             % use OR operator to cluster
             zeroRows = sum(vCopy,2)==0;
+            % measOutClus = find(zeroRows == 1);
+            measOutClus = zeroRows;
             measInClus(zeroRows) = [];
                         
             zeroCols = sum(vCopy,1)==0;

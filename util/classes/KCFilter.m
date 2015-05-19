@@ -37,9 +37,17 @@ classdef KCFilter < handle
             obj.P = params.P0;
         end
         
-        function addMeasurement(obj, z)
+        function addMeasurement(obj, z, Pd, Pg, lam)
             
-            obj.u = obj.H.'*obj.R\z;
+            % get a matrix of betas to elementwise multiply with
+            beta = calculateWeights(z,Pd,Pg,lam);            
+            beta = ones(2,1)*beta;
+            
+            % don't need the first element it seems (corresponds to false
+            % alarm)
+            zVec = beta(:,2:end).*z;
+            
+            obj.u = obj.H.'*obj.R\zVec;
             obj.U = obj.H.'*obj.R\obj.H;
             
         end
@@ -62,7 +70,48 @@ classdef KCFilter < handle
     end
     
     %% private methods
-    
+    methods (Access = private)
+        
+        function Beta = calculateWeights(obj, z, Pd, Pg, lam)
+            
+            zTild = z - obj.H*obj.xp;
+            
+            % innovation covariance (covariance of zTild?)
+            innCov = obj.H*obj.P*obj.H'+obj.R;
+            
+            % dimension of target
+            dim = 2;
+            
+            b = (2*pi)^(dim/2)*lam*sqrt(det(innCov))*(1-Pd*Pg)/Pd;
+            
+            % N+1 length vector representing the probability that a
+            % measurement is associated with this track
+            % N: # of measurements
+            % first element is the probability of being associated with no
+            % tracks
+            N = size(z,2);
+            Beta = zeros(1,N+1);
+            
+            % might be a way to do this using vectors / matrices instead
+            den = 0;            
+            for k = 1:N
+                den = den+exp(-zTild(:,k).'*(innCov\zTild(:,k))/2);
+            end
+            
+            Beta(1) = b/den;
+            
+            for k = 2:N+1
+                
+                num = exp(-zTild(:,k).'*(innCov\zTild(:,k))/2);
+                Beta(k) = num/den;
+                
+            end
+            
+            
+        end
+        
+        
+    end
 end
         
         
