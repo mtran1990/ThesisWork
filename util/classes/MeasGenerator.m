@@ -2,21 +2,27 @@ classdef MeasGenerator < handle
     %% properties
     properties (SetAccess = private)
         Bfa
+        V
         Pd
         n0
+        x
+        y
     end
     
     methods (Access = public)        
         % constructor
-        function obj = MeasGenerator(params)
+        function obj = MeasGenerator(params,mapDims)
             obj.Bfa = params.Bfa;
+            obj.V = params.V;
             obj.Pd = params.Pd;
             obj.n0 = params.n0;
+            obj.x = mapDims(1);
+            obj.y = mapDims(2);
         end
         
-        function out = getMeasurements(obj, tgtLoc, mapDim)
+        function out = getMeasurements(obj, tgtLoc)
 
-            clutter = obj.genClutter(mapDim);
+            clutter = obj.genClutter;
             meas = obj.genMeas(tgtLoc);
             
             out = [clutter meas];
@@ -27,14 +33,12 @@ classdef MeasGenerator < handle
     
     methods (Access = private)
         
-        function clutter = genClutter(obj, mapDim)
+        function clutter = genClutter(obj)            
             
-            x = mapDim(1);
-            y = mapDim(2);
+            m = poissrnd(obj.Bfa*obj.V);
             
-            m = poissrnd(obj.Bfa*(x*y));
-            
-            clutter = -[x;y]/2*ones(1,m)+[x 0; 0 y]*rand(2,m);
+            clutter = -[obj.x;obj.y]/2*ones(1,m)+...
+                [obj.x 0; 0 obj.y]*rand(2,m);
             
 %             if(m>0)
 %                 disp('check');

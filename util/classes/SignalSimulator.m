@@ -25,7 +25,8 @@ classdef SignalSimulator
                         obj.adjMat = params.adjMat;
                         obj.mapDims = params.mapDims;
                         
-                        obj.mGenerator = MeasGenerator(params.mParams);
+                        obj.mGenerator = ...
+                            MeasGenerator(params.sParams,params.mapDims);
                     else
                         error('Incorrect number of arguments');
                     end
@@ -122,7 +123,7 @@ classdef SignalSimulator
         function measTgts(obj, tgtLoc)
             
             for a = obj.nodeList
-                meas = obj.mGenerator.getMeasurements(tgtLoc, obj.mapDims);
+                meas = obj.mGenerator.getMeasurements(tgtLoc);
                 a.setTgts(meas);
             end
             

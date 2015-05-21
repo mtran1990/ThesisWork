@@ -8,6 +8,7 @@ classdef Node < handle
         allRanges
         sensorLoc
         rawLoc
+        TrackManager
     end
     
     %% methods

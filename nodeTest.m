@@ -20,17 +20,7 @@ nodeList = [a b c d];
 
 adjMat = logical([0 0 1 1; 0 0 1 0; 1 1 0 1; 1 0 1 0]);
 
-mapDims = [12 12];
-
-Bfa = 1E-5;
-Pd = 0.90;
-
-n0 = 0.5;
-
-mParams = struct('Bfa', Bfa, 'Pd', Pd, 'n0', n0);
-
-params = struct('tgtPath', tgtPath, 'nodeList', nodeList, ...
-    'adjMat', adjMat, 'mapDims', mapDims, 'mParams', mParams);
+params = genParams(tgtPath, nodeList, adjMat);
 
 sim = SignalSimulator(0,params);
 

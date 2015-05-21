@@ -40,7 +40,7 @@ classdef KCFilter < handle
         function addMeasurement(obj, z, Pd, Pg, lam)
             
             % get a matrix of betas to elementwise multiply with
-            beta = calculateWeights(z,Pd,Pg,lam);            
+            beta = calculateWeights(z,Pd,Pg,lam);
             beta = ones(2,1)*beta;
             
             % don't need the first element it seems (corresponds to false
@@ -73,6 +73,10 @@ classdef KCFilter < handle
     methods (Access = private)
         
         function Beta = calculateWeights(obj, z, Pd, Pg, lam)
+            % z  : 2xN vector of N measurements
+            % Pd : Probability of Detection
+            % Pg : Probability of measurement lying inside the gate
+            % lam: Mean of the poisson distribution of false alarms            
             
             zTild = z - obj.H*obj.xp;
             
@@ -93,7 +97,7 @@ classdef KCFilter < handle
             Beta = zeros(1,N+1);
             
             % might be a way to do this using vectors / matrices instead
-            den = 0;            
+            den = b;
             for k = 1:N
                 den = den+exp(-zTild(:,k).'*(innCov\zTild(:,k))/2);
             end

@@ -10,12 +10,18 @@ classdef MNinitiator < handle
         
         % Simulation Parameters
         % sParams:
+        % dim   :    dimension of the simulation (e.g. 2D)
         % maxV  :    Max Velocity
         % dt    :    time between measurements
         % sigA2 :    std. dev. of acceleration in model
         % sigM2 :    variance of measurements
-        % Kap   :    gate size parameter
-        % gamG  :    gate theshold
+        % n0    :    noise density
+        % Kap   :    gate size parameter        
+        % Pd    :    Probability of detection
+        % Pg    :    Probability of a measurement lying inside a gate
+        % gamG  :    Gate theshold, calculated from Pg
+        % Bfa   :    Density of false alarm measurements
+        % V     :    Volume of the simulation
         sParams
         
         % list of all tracks
@@ -38,6 +44,8 @@ classdef MNinitiator < handle
             obj.M2 = M2;
             obj.N2 = N2;
             obj.sParams = sParams;
+            
+            obj.gamG = chi2inv(sParams.Pg,sParams.dim);
         end
         
         function addMeasurement(obj, z)
@@ -84,7 +92,7 @@ classdef MNinitiator < handle
             
             obj.trackList(k) = KCFilter(params);
             
-        end       
+        end
         
         function updateTracks(obj,measVec,tgtsVec,tList,z,numClust)
             
@@ -115,7 +123,6 @@ classdef MNinitiator < handle
         function params = genKFparams(obj,x0,P0)
             
             params = obj.sParams;
-            params = rmfield(params,{'maxV','Kap'});
             params.x0 = x0;
             params.P0 = P0;
             
