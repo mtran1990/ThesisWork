@@ -4,9 +4,14 @@ classdef MNinitiator < handle
         % To confirm a track, first N1 measurements must be inside the gate
         % and at least M2 of the next N2 measurements must be inside the
         % gate
-        N1 
-        M2
-        N2
+        
+        % Tracker Parameters
+        % tracker:
+        % tType : Type of tracker (only MN right now)
+        % N1   : see above
+        % M2   : see above
+        % N2   : see above
+        tracker
         
         % Simulation Parameters
         % sParams:
@@ -39,37 +44,23 @@ classdef MNinitiator < handle
     %% methods
     methods (Access = public)
         
-        function obj = MNinitiator(N1,M2,N2,sParams)
-            obj.N1 = N1;
-            obj.M2 = M2;
-            obj.N2 = N2;
+        function obj = MNinitiator(tracker,sParams)
+            obj.tracker = tracker;
             obj.sParams = sParams;
-            
-            obj.gamG = chi2inv(sParams.Pg,sParams.dim);
         end
         
         function addMeasurement(obj, z)
             
             if(isempty(obj.trackList))
-                % assuming N measurements are arranged as 2xN
-                N = size(z,2);
-                for k = 1:N
-                    initTrack(z(:,k));
-                end
                 
-                obj.trackStates = ones(4,N);
-                obj.trackStates(3,:) = 0;
+                % if there are no tracks currently, create new tracks from
+                % the measurements
+                obj.createNewTracks(z);
                 
             else
-                % need to gate the measurements
-                [vMat, tmpList] = getValidationMat(z);
                 
-                % cluster measurements in vMat?
-                [measVec, tgtsVec, numClust, measOutClus] = ...
-                    obj.clusterTgts(vMat);
+                obj.clustAndUpdateTracks(z);
                 
-                % TODO: update tracks based on clusters
-                %       create new tracks from rest of measurements
             end
             
             
@@ -93,16 +84,90 @@ classdef MNinitiator < handle
             obj.trackList(k) = KCFilter(params);
             
         end
-        
-        function updateTracks(obj,measVec,tgtsVec,tList,z,numClust)
+                
+        function params = genKFparams(obj,x0,P0)
             
+            params = obj.sParams;
+            params.x0 = x0;
+            params.P0 = P0;
+            
+        end
+        
+        function createNewTracks(obj,z)
+            % assuming N measurements are arranged as 2xN
+            N = size(z,2);
+            for k = 1:N
+                initTrack(z(:,k));
+            end
+            
+            if(isempty(obj.trackStates))
+                obj.trackStates = ones(4,N);
+                obj.trackStates(3,:) = 0;
+            else
+                tmp = ones(4,N);
+                tmp(3,:) = 0;
+                obj.trackStates = [obj.trackStates tmp];
+            end
+            
+        end
+        
+        function clustAndUpdateTracks(obj,z)
+            
+            [validTracks,tList] = getValidTracks;
+            
+            % need to gate the measurements
+            vMat = obj.getValidationMat(z,tList);
+
+            % cluster measurements in vMat?
+            [measVec, tgtsVec, numClust, measOutClus, tgtsOutClus] = ...
+                obj.clusterTgts(vMat);
+
+            % update tracks in clusters
+            obj.updateTracks(measVec,tgtsVec,tList,z,numClust);
+            
+            % TODO: update track states
+            obj.updateTrackStates(validTracks,tgtsOutClus);
+            
+            % create new tracks from leftover measurements
+            zOut = z(measOutClus);            
+            obj.createNewTracks(zOut);
+            
+        end
+        
+        function updateTracks(obj,measVec,tgtsVec,tList,z,numClust,...
+                tgtsOutClus)
+            
+            Pd = obj.sParams.Pd;
+            Pg = obj.sParams.Pg;
+            lam = obj.sParams.Bfa*obj.sParams.V;
+            
+            % update targets in clusters
             for k = 1:numClust
                 
                 zClust = z(measVec{k});
                 tgts = tList(tgtsVec{k});
                 
+                for t = tgts                    
+                    t.addMeasurement(zClust,Pd,Pg,lam);                    
+                end
+                
             end
             
+            % update targets with no measurements
+            for t = tList(tgtsOutClus)
+                t.addMeasurement;
+            end
+            
+            
+        end
+        
+        function updateTrackStates(obj,validTracks,tgtsOutClus)
+            
+            % looking at all the tracks, there are three categories
+            % 1) Not Valid Tracks: These aren't updated at all
+            % 2) Valid Tracks with measurements inside their gates: these
+            %    are updated
+            % 3) Valid Tracks with no measurements inside their gates
             
             
         end
@@ -120,32 +185,32 @@ classdef MNinitiator < handle
             P0 = diag([sigA2 sigV2 sigA2 sigV2]);
         end
         
-        function params = genKFparams(obj,x0,P0)
+        function [validTracks,tList] = getValidTracks(obj)
+            % validTracks: 1xT logical vector, where T is the total number
+            %              of current tracks for this node
+            % tList      : list of valid tracks in the trackList
             
-            params = obj.sParams;
-            params.x0 = x0;
-            params.P0 = P0;
+            % (confirmed and tentative only for now)
+            validTracks = obj.trackStates(1,:) ~= 0;
+            tList = obj.trackList(validTracks);
             
         end
         
-        function [vMat, tmpList] = getValidationMat(obj,z)
+        function [vMat] = getValidationMat(~,z,tList)
             
             % N: # of measurements
             N = size(z,2);
             
-            % M: # of tracks (confirmed and tentative for now)
-            validTracks = obj.trackStates(1,:) ~= 0;
-            M = sum(validTracks);
+            % M: # of tracks (confirmed and tentative only for now)
+            M = length(tList);                        
             
             vMat = zeros(N,M);
-            
-            tmpList = obj.trackList(validTracks);
             
             for i=1:N
                 for j=1:M
                     
-                    S = tmpList(j).P;
-                    yhat = tmpList(j).H*tmpList(j).xp;
+                    S = tList(j).P;
+                    yhat = tList(j).H*tList(j).xp;
                     
                     y = z(:,i);
                     
@@ -196,8 +261,25 @@ classdef MNinitiator < handle
         end
         
         % returns a cell array of tgts separated into clusters
-        function [measInClus, tgtsInClus, numClust, measOutClus, vCopy] ...
-                = clusterTgts(~, vMat)
+        function [measInClus, tgtsInClus, numClust, measOutClus, ...
+                tgtsOutClus, vCopy] = clusterTgts(~, vMat)
+            % Outputs:
+            % measInClus : 1xC cell array, where M is the number of
+            %              clusters, contains indicies of measurements in
+            %              the cluster
+            % tgtsInClus : 1xC cell array, where M is the number of
+            %              clusters, contains indicies of targets in the
+            %              cluster
+            % numClust   : C, the number of clusters
+            % measOutClus: 1xN logical vector, where N is the number of
+            %              total measurements, takes on values of 1 where
+            %              measurements are not in any validation gate, and
+            %              0 when the associated measure is inside a gate
+            % tgtsOutClus: 1xM logical vector, where M is the number of
+            %              valid targets, takes on values of 1 where
+            %              targets have no measurements inside their
+            %              validation gates, and 0 when they have a
+            %              measurement inside their validation gate            
             
             vCopy = vMat;
             
@@ -206,12 +288,12 @@ classdef MNinitiator < handle
                                     
             % steps: remove null rows and columns
             % use OR operator to cluster
-            zeroRows = sum(vCopy,2)==0;
-            % measOutClus = find(zeroRows == 1);
+            zeroRows = sum(vCopy,2)==0;            
             measOutClus = zeroRows;
             measInClus(zeroRows) = [];
                         
             zeroCols = sum(vCopy,1)==0;
+            tgtsOutClus = zeroCols;
             
             vCopy(zeroRows,:) = [];
             vCopy(:,zeroCols) = [];

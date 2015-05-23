@@ -31,7 +31,7 @@ classdef Node < handle
         end
         
         function setTgts(obj, tgtMeas)
-            obj.tgtMeas = tgtMeas;
+            obj.TrackManager.addMeasurement(tgtMeas);
         end
         
         function receiveMeas(obj, nodes)
@@ -103,6 +103,14 @@ classdef Node < handle
             % need at least 3 measurements for algorithm to work
             if(length(obj.allRanges)>2)
                 obj.rawLoc = gaussNewton(obj.sensorLoc', obj.allRanges');
+            end
+            
+        end
+        
+        function initTrackManager(obj,tracker,sParams)
+            
+            if(isempty(obj.TrackManager))
+                obj.TrackManager = MNinitiator(tracker,sParams);
             end
             
         end

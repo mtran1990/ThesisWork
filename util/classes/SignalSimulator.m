@@ -27,6 +27,11 @@ classdef SignalSimulator
                         
                         obj.mGenerator = ...
                             MeasGenerator(params.sParams,params.mapDims);
+                        
+                        % since TrackManager of nodes aren't defined by
+                        % default, need to initialize them
+                        obj.initNodeTM(params.nodeList,...
+                            params.tracker,params.sParams);
                     else
                         error('Incorrect number of arguments');
                     end
@@ -118,8 +123,7 @@ classdef SignalSimulator
             end
         
         end
-            
-        
+                    
         function measTgts(obj, tgtLoc)
             
             for a = obj.nodeList
@@ -159,6 +163,14 @@ classdef SignalSimulator
     end
         
     methods (Access = private)
+        
+        function initNodeTM(~,nodes,tracker,sParams)
+            
+            for node = nodes
+                node.initTrackManager(tracker,sParams);
+            end
+            
+        end
         
         function [loc] = getTgtLoc(obj, t)
             

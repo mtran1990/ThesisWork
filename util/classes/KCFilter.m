@@ -39,20 +39,34 @@ classdef KCFilter < handle
         
         function addMeasurement(obj, z, Pd, Pg, lam)
             
-            % get a matrix of betas to elementwise multiply with
-            beta = calculateWeights(z,Pd,Pg,lam);
-            beta = ones(2,1)*beta;
-            
-            % don't need the first element it seems (corresponds to false
-            % alarm)
-            zVec = beta(:,2:end).*z;
-            
-            obj.u = obj.H.'*obj.R\zVec;
-            obj.U = obj.H.'*obj.R\obj.H;
+            % can't calculate weights without measurements
+            if(nargin == 4)
+                % get a matrix of betas to elementwise multiply with
+                beta = calculateWeights(z,Pd,Pg,lam);
+                beta = ones(2,1)*beta;
+
+                % don't need the first element it seems (corresponds to false
+                % alarm)
+                % need to sum across rows
+                zVec = sum(beta(:,2:end).*z,2);
+
+                obj.u = obj.H.'*obj.R\zVec;
+                obj.U = obj.H.'*obj.R\obj.H;
+            else
+                obj.u = 0;
+                obj.U = 0;
+            end
             
         end
         
         function iterFilter(obj, xj, u, U)
+            
+            % probably need to rewrite this part
+            % thinking of returning a boolean, where true is returned when
+            % the track was updated with measurements and false is returned
+            % otherwise
+            % might be able to use that to help update the track states
+            
             eps = 0.25;
             y = sum(u,2)+obj.u;
             S = sum(U,3)+obj.U;

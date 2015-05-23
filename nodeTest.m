@@ -3,7 +3,8 @@
 
 clear;
 
-addpath(genpath('./util'));
+utilDir = genpath('./util');
+addpath(utilDir);
 
 A = 1.5;
 freq = 0.2;
@@ -36,3 +37,5 @@ tgtLoc = tgtPath(0);
 sim.measTgts(tgtLoc);
 % sim.exchangeMeas;
 % sim.getRawEstimates;
+
+rmpath(utilDir);
