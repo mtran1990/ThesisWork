@@ -8,10 +8,16 @@ classdef KCFilter < handle
         R
         sigA2
         xu
+        
         P
         xp
+        
         u
         U
+        xdiff
+        
+        beta0
+        pTild
     end
     
     %% methods
@@ -41,22 +47,27 @@ classdef KCFilter < handle
             
             % can't calculate weights without measurements
             if(nargin == 4)
+                
+                beta = obj.calculateWeights(z,Pd,Pg,lam);
+                obj.beta0 = beta(1);
+                obj.pTild = obj.calcPTild(beta,z);
+                
                 % get a matrix of betas to elementwise multiply with
-                beta = calculateWeights(z,Pd,Pg,lam);
-                beta = ones(2,1)*beta;
+                beta_tmp = ones(2,1)*beta;
 
-                % don't need the first element it seems (corresponds to false
-                % alarm)
+                % don't need the first element it seems (corresponds to
+                % false alarm)
                 % need to sum across rows
-                zVec = sum(beta(:,2:end).*z,2);
+                zVec = sum(beta_tmp(:,2:end).*z,2);
 
                 obj.u = obj.H.'*obj.R\zVec;
-                obj.U = obj.H.'*obj.R\obj.H;
+                obj.U = obj.H.'*obj.R\obj.H;                
             else
-                obj.u = 0;
-                obj.U = 0;
+                obj.u = zeros(4,1);
+                obj.U = zeros(4,4);
             end
             
+            obj.xdiff = zeros(4,1);
         end
         
         function addTrack(obj,T2)
@@ -64,9 +75,10 @@ classdef KCFilter < handle
             obj.u = obj.u+T2.u;
             obj.U = obj.u+T2.U;
             
+            obj.xdiff = obj.xdiff + (obj.xp-T2.xp);
         end
         
-        function iterFilter(obj, xj, u, U)
+        function updated = iterFilter(obj)
             
             % probably need to rewrite this part
             % thinking of returning a boolean, where true is returned when
@@ -74,17 +86,36 @@ classdef KCFilter < handle
             % otherwise
             % might be able to use that to help update the track states
             
-            eps = 0.25;
-            y = sum(u,2)+obj.u;
-            S = sum(U,3)+obj.U;
-            
-            % update step
-            M = (inv(obj.P)+S);
-            obj.xu = obj.xp + M\(y-S*obj.xp)+eps*M\sum(xj-obj.xp);
-            
-            % prediction step
-            obj.P = obj.F*M*obj.F.'+obj.Q;
-            obj.xp = obj.F*obj.xu;            
+            % if u is a column vectors of zeros, then the track didn't
+            % receive any measurements
+            if(isequal(zeros(4,1),obj.u))
+                % update step
+                obj.xu = obj.xp;
+                
+                % prediction step
+                % NOTE: not sure if this part is right, need to double
+                % check
+                obj.P = obj.P;
+                obj.xp = obj.F*obj.xu;
+            else            
+                eps = 0.25;
+                y = obj.u;
+                S = obj.U;
+
+                S0 = (1-obj.beta0)*S;
+
+                % update step
+                Mtild = (inv(obj.P)+S);
+                K = Mtild\(obj.H).'/obj.R;
+                M = obj.beta0*obj.P+(1-obj.beta0)/(Mtild)+K*obj.pTild*K.';
+
+                obj.xu = obj.xp + Mtild\(y-S0*obj.xp)+...
+                    eps*M/(1+norm(M))*obj.xdiff;
+
+                % prediction step
+                obj.P = obj.F*M*obj.F.'+obj.Q;
+                obj.xp = obj.F*obj.xu;
+            end
             
         end
         
@@ -145,6 +176,25 @@ classdef KCFilter < handle
             
         end
         
+        function pTild = calcPTild(obj,beta,z)
+            
+            N = size(z,2);
+            pTild = zeros(N);
+            
+            beta_tmp = ones(2,1)*beta(2:end);
+            
+            zi = sum(beta_tmp.*z,2);
+            mat2 = zi*zi.';
+            
+            for k = 1:N
+                
+                zTild = z(:,k) - obj.H*obj.xp;                
+                mat = zTild*zTild.';
+                
+                pTild = pTild+beta(k+1)*mat-mat2;
+            end
+            
+        end
         
     end
 end

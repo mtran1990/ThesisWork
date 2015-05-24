@@ -89,6 +89,24 @@ classdef MNinitiator < handle
             obj.combineTracks(rowsol,rTracks,Na,Nb);
         end
         
+        function updateTrackStates(obj)
+            
+            % looking at all the tracks, there are three categories
+            % 1) Not Valid Tracks: These aren't updated at all
+            % 2) Valid Tracks with measurements inside their gates: these
+            %    are updated
+            % 3) Valid Tracks with no measurements inside their gates
+            [validTracks,tList] = getValidTracks;
+            
+            N = length(tList);
+            for k = 1:N
+                
+                
+                
+            end
+            
+        end
+        
     end
     
     %% private methods
@@ -149,7 +167,7 @@ classdef MNinitiator < handle
             obj.updateTracks(measVec,tgtsVec,tList,z,numClust);
             
             % TODO: update track states
-            obj.updateTrackStates(validTracks,tgtsOutClus);
+%             obj.updateTrackStates(validTracks,tgtsOutClus);
             
             % create new tracks from leftover measurements
             zOut = z(measOutClus);            
@@ -184,16 +202,7 @@ classdef MNinitiator < handle
             
         end
         
-        function updateTrackStates(obj,validTracks,tgtsOutClus)
-            
-            % looking at all the tracks, there are three categories
-            % 1) Not Valid Tracks: These aren't updated at all
-            % 2) Valid Tracks with measurements inside their gates: these
-            %    are updated
-            % 3) Valid Tracks with no measurements inside their gates
-            
-            
-        end
+
         
         function P0 = genP0mat(obj)
             

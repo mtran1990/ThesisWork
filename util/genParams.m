@@ -2,6 +2,18 @@ function params = genParams(tgtPath, nodeList, adjMat)
 
 mapDims = [12 12];
 
+% Time Parameters
+% tParams
+% start: simulation start time
+% end  : simulation end time
+% dt   : time between measurements (Note: also used below)
+% now  : current time
+s = 0;
+e = 10;
+dt = 0.1;
+
+tParams = struct('start',s,'end',e,'dt',dt);
+
 % Right now I'm only working on the M-N tracker
 % To confirm a track, first N1 measurements must be inside the gate
 % and at least M2 of the next N2 measurements must be inside the
@@ -37,7 +49,7 @@ tracker = struct('tType',tType,'N1',N1,'M2',M2,'N2',N2);
 % V     :    Volume of the simulation
 dim   = 2;
 maxV  = 10;
-dt    = 0.1;
+dt    = dt;
 sigA2 = 0.1;
 sigM2 = 0.1;
 n0    = 0.5;
@@ -53,7 +65,7 @@ sParams = struct('dim',dim,'maxV',maxV,'dt',dt,'sigA2',sigA2,...
     'Bfa',Bfa,'V',V);
 
 params = struct('tgtPath', tgtPath, 'nodeList', nodeList, ...
-    'adjMat', adjMat, 'mapDims', mapDims, 'sParams', sParams, ...
-    'tracker',tracker);
+    'adjMat', adjMat, 'mapDims', mapDims, 'tParams',tParams,...
+    'sParams', sParams, 'tracker',tracker);
 
 end

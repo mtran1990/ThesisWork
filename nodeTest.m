@@ -34,7 +34,7 @@ sim.showConnections(1);
 %% Measurement Tests
 tgtLoc = tgtPath(0);
 
-sim.measTgts(tgtLoc);
+% sim.measTgts(tgtLoc);
 % sim.exchangeMeas;
 % sim.getRawEstimates;
 

@@ -45,6 +45,12 @@ classdef Node < handle
             
         end
         
+        function updateTracks(obj)
+            
+            obj.TrackManager.updateTrackStates;
+            
+        end
+        
         function receiveMeas(obj, nodes)
             % function to fill allRanges with the measurements from the
             % current node and all its neighbors

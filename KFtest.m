@@ -1,6 +1,7 @@
 %% Kalman Filter Test
 
-addpath(genpath('./util'));
+utilpath = genpath('./util');
+addpath(utilpath);
 
 A = 1.5;
 freq = 0.2;
@@ -34,7 +35,7 @@ n = length(t);
 sigN = 0.1;
 
 xPath = tgtPath(t);
-% xMeas = xPath+sqrt(sigN)*randn(2,n);
+xMeas = xPath+sqrt(sigN)*randn(2,n);
 
 x = zeros(4,n);
 
@@ -52,3 +53,5 @@ grid on;
 legend('Measured Position','KF output');
 axis([-3 3 -3 3]);
 axis square;
+
+rmpath(utilpath);

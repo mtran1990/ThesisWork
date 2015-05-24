@@ -1,9 +1,9 @@
 
-classdef SignalSimulator
+classdef SignalSimulator < handle
     %% properties
     properties (SetAccess = private)
         
-        % time
+        tParams
         adjMat
         tgtPath
         nodeList
@@ -24,6 +24,7 @@ classdef SignalSimulator
                         obj.nodeList = params.nodeList;
                         obj.adjMat = params.adjMat;
                         obj.mapDims = params.mapDims;
+                        obj.tParams = params.tParams;
                         
                         obj.mGenerator = ...
                             MeasGenerator(params.sParams,params.mapDims);
@@ -123,30 +124,19 @@ classdef SignalSimulator
             end
         
         end
-                    
-        function measTgts(obj, tgtLoc)
+                
+        function iterSim(obj)
             
-            for a = obj.nodeList
-                meas = obj.mGenerator.getMeasurements(tgtLoc);
-                a.setTgts(meas);
-            end
+            % runs one iteration of the simulation
+            obj.advanceTime;
+            
+            loc = obj.getTgtLocNow;
+            obj.measTgts(tgt,loc);
+            obj.exchangeMeas;
             
         end
         
-        function exchangeMeas(obj)
-            % tells each node to exchange its measurements with its
-            % neighbors
-            n = length(obj.nodeList);
-            
-            for k=1:n
-                node = obj.nodeList(k);
-                
-                neighbors = obj.nodeList(obj.adjMat(k,:));
-                node.receiveMeas(neighbors);
-                
-            end
-            
-        end
+
         
         function getRawEstimates(obj)
             % tells each node to use the pooled measurements to give an
@@ -178,6 +168,47 @@ classdef SignalSimulator
             
         end
         
+        function measTgts(obj, tgtLoc)
+            
+            for a = obj.nodeList
+                meas = obj.mGenerator.getMeasurements(tgtLoc);
+                a.setTgts(meas);
+            end
+            
+        end
+        
+        function exchangeMeas(obj)
+            % tells each node to exchange its measurements with its
+            % neighbors
+            n = length(obj.nodeList);
+            
+            for k=1:n
+                node = obj.nodeList(k);
+                
+                neighbors = obj.nodeList(obj.adjMat(k,:));
+                node.matchTracks(neighbors);
+                
+            end
+            
+        end
+        
+        function updateNodes(obj)
+            
+            for n = obj.nodeList                
+                n.updateTracks;                
+            end
+            
+        end
+        
+        function advanceTime(obj)
+            obj.tParams.now = obj.tParams.now+obj.tParams.dt;
+        end
+        
+        function loc = getTgtLocNow(obj)
+           
+            loc = obj.tgtPath(obj.tParams.now);
+            
+        end
     end
     
     
