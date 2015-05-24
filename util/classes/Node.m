@@ -34,6 +34,17 @@ classdef Node < handle
             obj.TrackManager.addMeasurement(tgtMeas);
         end
         
+        function matchTracks(obj, nList)
+            % nList: a list of nodes connected with the current node
+            for n = nList
+               
+                [~,rTracks] = n.getValidTracks;
+                obj.TrackManager.matchTracks(rTracks);
+                
+            end                        
+            
+        end
+        
         function receiveMeas(obj, nodes)
             % function to fill allRanges with the measurements from the
             % current node and all its neighbors

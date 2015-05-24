@@ -62,8 +62,31 @@ classdef MNinitiator < handle
                 obj.clustAndUpdateTracks(z);
                 
             end
+                        
+        end
+        
+        function [validTracks,tList] = getValidTracks(obj)
+            % validTracks: 1xT logical vector, where T is the total number
+            %              of current tracks for this node
+            % tList      : list of valid tracks in the trackList
             
+            % (confirmed and tentative only for now)
+            validTracks = obj.trackStates(1,:) ~= 0;
+            tList = obj.trackList(validTracks);
             
+        end
+        
+        function matchTracks(obj,rTracks)
+            % rTracks: received tracks from another node
+            
+            % find the cost matrix
+            [cMat, Na, Nb] = obj.createCostMatrix(rTracks);
+            
+            % run the JV algorithm
+            rowsol = lapjv(cMat);
+            
+            % combine track data
+            obj.combineTracks(rowsol,rTracks,Na,Nb);
         end
         
     end
@@ -183,17 +206,6 @@ classdef MNinitiator < handle
             sigV2 = (maxV/Kap)^2;
             
             P0 = diag([sigA2 sigV2 sigA2 sigV2]);
-        end
-        
-        function [validTracks,tList] = getValidTracks(obj)
-            % validTracks: 1xT logical vector, where T is the total number
-            %              of current tracks for this node
-            % tList      : list of valid tracks in the trackList
-            
-            % (confirmed and tentative only for now)
-            validTracks = obj.trackStates(1,:) ~= 0;
-            tList = obj.trackList(validTracks);
-            
         end
         
         function [vMat] = getValidationMat(~,z,tList)
@@ -351,6 +363,135 @@ classdef MNinitiator < handle
             
         end
         
+        function [cMat, Na, Nb] = createCostMatrix(obj, rTracks)
+            % rTracks: received tracks from another node
+            
+            [~,currTracks] = obj.getValidTracks;
+            
+            Na = length(currTracks);
+            Nb = length(rTracks);
+            
+            costs = zeros(Na,Nb);
+            
+            for a = 1:Na
+                for b = 1:Nb
+                    
+                    costs(a,b) = currTracks(a).computeCost(rTracks(b));
+                    
+                end
+            end            
+            
+            % calculate costs for false alarms, right now all the sensors
+            % are assumed to be the same, with the same false alarm
+            % densities
+            g = obj.calcFAcost;
+            
+            % augment the matrix
+            if(Na<Nb)
+                
+                aug = inf(Na);
+                aug(eye(Na)) = g;
+                
+                cMat = [costs aug];
+            else
+                
+                aug = inf(Nb);
+                aug(eye(Nb)) = g;
+                
+                cMat = [costs; aug];
+            end
+            
+        end
+        
+        function g = calcFAcost(obj)
+            
+            Pd  = obj.sParams.Pd;
+            Bfa = obj.sParams.Bfa;
+            V   = obj.sParams.V;
+            dim = obj.sParams.dim;
+            
+            Pnta = V*Pd*(1-Pd)+Bfa;
+            Pntb = V*Pd*(1-Pd)+Bfa;
+            
+            g = 2*log(V*Pd^2/( (2*pi)^(dim/2)*Pnta*Pntb ));
+            
+        end
+        
+        function combineTracks(obj,rowsol,rTracks,Na,Nb)
+            
+            % rowsol: pairing given by JV algorithm
+            % Na    : # of tracks in current node
+            % Nb    : # of tracks in other node
+            
+            % function explanation
+            %{
+            % this function basically takes the pairings in rowsol and
+            % combines the information in the tracks
+            
+            % I'll try to explain the Na<Nb case here
+            % In this case, we've augmented our cost matrix to be a 
+            % (Na)x(Nb+Na) size matrix
+            % rowsol will have length Na
+            
+            % The first element of rowsol corresponds to the first track in
+            % currTracks below (which is a list of all the valid tracks).
+            
+            % The second element of rowsol refers to the second track in
+            % the same list and so on.
+            
+            % The value of rowsol determines which track from the other
+            % node JV found a pairing with
+            
+            % If this value is larger than Nb, then we know it's pointing
+            % to one of the false alarms
+            
+            % Otherwise, we use this information to fuse the tracks
+            
+            % Note: There might be better way to do this instead of two if
+            %       statements, I'll try to think of one later
+            %}
+            
+            [~,currTracks] = obj.getValidTracks;
+            
+            % two cases
+            if(Na<Nb)
+                
+                % length of rowsol is the same as the smaller value, i.e.
+                % Na in this case
+                for k = 1:Na
+                    
+                    % if the value in rowsol is less than or equal to Nb,
+                    % then it isn't pointing to a false alarm, and points
+                    % to a valid track from the other node
+                    if(rowsol(k)<=Nb)
+                        
+                        T1 = currTracks(k);
+                        T2 = rTracks(rowsol(k));                        
+                        
+                        T1.addTrack(T2);
+                        
+                    end
+                end
+                
+            else
+                
+                % length of rowsol is Nb
+                for k = 1:Nb
+                    
+                    if(rowsol(k)<=Na)
+                        
+                        T1 = currTracks(rowsol(k));                        
+                        T2 = rTracks(k);
+                        
+                        T1.addTrack(T2);
+                        
+                    end
+                    
+                end
+                
+            end
+            
+        end
     end
         
 end

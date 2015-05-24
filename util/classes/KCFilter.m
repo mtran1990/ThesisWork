@@ -59,6 +59,13 @@ classdef KCFilter < handle
             
         end
         
+        function addTrack(obj,T2)
+            % adds the info from another track
+            obj.u = obj.u+T2.u;
+            obj.U = obj.u+T2.U;
+            
+        end
+        
         function iterFilter(obj, xj, u, U)
             
             % probably need to rewrite this part
@@ -79,6 +86,16 @@ classdef KCFilter < handle
             obj.P = obj.F*M*obj.F.'+obj.Q;
             obj.xp = obj.F*obj.xu;            
             
+        end
+        
+        function cost = computeCost(obj,T2)
+            % computes the cost between the current track and the given
+            % track (using Mahalanobis distance)
+            S = (obj.P+T2.P);
+            xdiff = obj.xp-T2.xp;
+            c = xdiff.'*S*xdiff;
+            
+            cost = c+log(det(S));
         end
         
     end
