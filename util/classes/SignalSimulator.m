@@ -10,6 +10,12 @@ classdef SignalSimulator < handle
         mapDims
         
         mGenerator
+        
+        % gui info
+        % gui:
+        % nodeHandles: handles for the location of the nodes on the map
+        % connHandles: handles for the lines between nodes
+        gui
     end
     
     %% public methods
@@ -33,6 +39,8 @@ classdef SignalSimulator < handle
                         % default, need to initialize them
                         obj.initNodeTM(params.nodeList,...
                             params.tracker,params.sParams);
+                        
+                        obj.initGUIstruct;
                     else
                         error('Incorrect number of arguments');
                     end
@@ -51,46 +59,80 @@ classdef SignalSimulator < handle
             end
         end
         
-        function showMap(obj, figNum)
-            figure(figNum);
-            axis([-obj.mapDims(1)/2 obj.mapDims(1)/2 ...
-                -obj.mapDims(2)/2 obj.mapDims(2)/2]);
-            grid on;
-            xlabel('Distance (m)');
-            ylabel('Distance (m)');
-            axis square;
-            hold on;
+        function showMap(obj, ax)
             
-            for a = obj.nodeList
-            
-                plot(a.loc(1), a.loc(2), 'ro');
+            if(isempty(obj.gui.nodeHandles))
+                N = length(obj.nodeList);
+                h = zeros(1,N);
+                hold on;
+                for k = 1:N
+                    
+                    a = obj.nodeList(k);
+                    h(k) = plot(ax,a.loc(1), a.loc(2), 'ro');
+                    
+                end
+                hold off;
+                
+                obj.gui.nodeHandles = h;
+                
+            else
+                % else toggle the visibility
+                str = get(obj.gui.nodeHandles(1),'visible');
+                
+                if(strcmp(str,'on'))
+                    option = 'off';
+                else
+                    option = 'on';
+                end
+                
+                % might have to do this in a for loop
+                set(obj.gui.nodeHandles,'visible',option);
                 
             end
-            hold off;
             
         end
         
-        function showConnections(obj, figNum)
+        function showConnections(obj, ax)
             
-            obj.showMap(figNum);
-            hold on;
-            
-            n = length(obj.nodeList);            
-            for k = 1:n
+            if(isempty(obj.gui.connHandles))
+
+                N = sum(obj.adjMat(:));
+                h = zeros(1,N);
+                i = 1;
                 
-                node = obj.nodeList(k);
-                
-                for a = obj.nodeList(obj.adjMat(k,:))
+                hold on;
+                n = length(obj.nodeList);
+                for k = 1:n
                     
-                    xy = [node.loc a.loc];
-                    plot(xy(1,:),xy(2,:),'k');
+                    node = obj.nodeList(k);
+                    
+                    for a = obj.nodeList(obj.adjMat(k,:))
+                        
+                        xy = [node.loc a.loc];
+                        h(i) = plot(ax,xy(1,:),xy(2,:),'k');
+                        i = i+1;
+                    end
+                    
                     
                 end
+                hold off;
                 
+                obj.gui.connHandles = h;
+                
+            else
+                % else toggle the visibility
+                str = get(obj.gui.connHandles(1),'visible');
+                
+                if(strcmp(str,'on'))
+                    option = 'off';
+                else
+                    option = 'on';
+                end
+                
+                % might have to do this in a for loop
+                set(obj.gui.connHandles,'visible',option);
                 
             end
-            
-            hold off;
             
         end
         
@@ -144,6 +186,35 @@ classdef SignalSimulator < handle
             obj.updateNodes;
         end        
         
+        function initMap(obj,ax)
+           
+            axis(ax,[-obj.mapDims(1)/2 obj.mapDims(1)/2 ...
+                -obj.mapDims(2)/2 obj.mapDims(2)/2]);
+            grid on;
+            xlabel('Distance (m)');
+            ylabel('Distance (m)');
+            axis square;
+            
+        end
+        
+        function showTracks(obj,pop,ax)
+            
+            idx = get(pop,'value');            
+            obj.gui.trackHandles{idx} = ...
+                obj.nodeList(idx).plotTracks(ax,obj.gui.trackHandles{idx});
+            
+        end
+        
+        function N = getNumNodes(obj)
+            N = length(obj.nodeList);
+        end
+        
+        function loc = getNodeLoc(obj)
+           
+            loc = [obj.nodeList.loc];
+            
+        end
+        
         function getRawEstimates(obj)
             % tells each node to use the pooled measurements to give an
             % intial estimate of the target location
@@ -165,6 +236,14 @@ classdef SignalSimulator < handle
             for node = nodes
                 node.initTrackManager(tracker,sParams);
             end
+            
+        end
+        
+        function initGUIstruct(obj)
+            
+            obj.gui = struct('nodeHandles',[],'connHandles',[],...
+                'trackHandles',[]);
+            obj.gui.trackHandles = cell(1,obj.getNumNodes);
             
         end
         
@@ -219,6 +298,7 @@ classdef SignalSimulator < handle
         function done = isDone(obj)
             done = obj.tParams.now > obj.tParams.end;
         end
+        
     end
     
     

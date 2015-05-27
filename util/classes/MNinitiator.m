@@ -93,7 +93,12 @@ classdef MNinitiator < handle
             
             % right now can only run if this node has tracks to match to
             % consider copying tracks from other node if this is the case?
-            if(~(isempty(obj.trackList) || isempty(rTracks) ))
+            % also, can only run if there is at least one valid track
+            
+            validTracks = obj.getValidTracks;
+            
+            if(~(isempty(obj.trackList) || isempty(rTracks) || ...
+                    isempty(validTracks) ))
             
                 % find the cost matrix
                 [cMat, Na, Nb] = obj.createCostMatrix(rTracks);
@@ -127,20 +132,42 @@ classdef MNinitiator < handle
             
         end
         
-        function h = plotTracks(obj)
+        function h = plotTracks(obj,ax,hand)
             
-            N = size(obj.trackList,2);
-            map = jet(N);
-            h = zeros(1,N);            
-            
-            hold on;            
-            for k = 1:N
-                x = obj.trackList(k).xu(1,:);
-                y = obj.trackList(k).xu(3,:);
-                h(k) = plot(x,y,'color',map(k,:));
+            if(isempty(hand))
+                N = size(obj.trackList,2);
+                maxColor = 10;
+                map = jet(maxColor);
+                h = zeros(1,N);
+
+                hold on;
+                for k = 1:N
+                    if(isempty(obj.trackList(k).xu))
+                        x = obj.trackList(k).xp(1,:);
+                        y = obj.trackList(k).xp(3,:);
+                    else
+                        x = obj.trackList(k).xu(1,:);
+                        y = obj.trackList(k).xu(3,:);
+                    end
+                    idx = 1+mod(k,maxColor);
+                    h(k) = plot(ax,x,y,'color',map(idx,:));
+                end
+                hold off;
+            else
+                
+                str = get(hand(1),'visible');
+                
+                if(strcmp(str,'on'))
+                    option = 'off';
+                else
+                    option = 'on';
+                end
+                
+                set(hand,'visible',option);
+                h = hand;
             end
-            hold off;
         end
+        
     end
     
     %% private methods

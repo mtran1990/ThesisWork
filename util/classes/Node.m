@@ -139,9 +139,9 @@ classdef Node < handle
             
         end
         
-        function h = plotTracks(obj)
+        function h = plotTracks(obj,ax,hand)
             
-            h = obj.TrackManager.plotTracks;
+            h = obj.TrackManager.plotTracks(ax,hand);            
             
         end
     end
