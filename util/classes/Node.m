@@ -4,10 +4,6 @@ classdef Node < handle
     properties (SetAccess = private)
         loc
         tgtDist
-        tgtMeas
-        allRanges
-        sensorLoc
-        rawLoc
         TrackManager
     end
     
@@ -143,6 +139,11 @@ classdef Node < handle
             
         end
         
+        function h = plotTracks(obj)
+            
+            h = obj.TrackManager.plotTracks;
+            
+        end
     end
     
 end

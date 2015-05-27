@@ -99,7 +99,7 @@ classdef MNinitiator < handle
                 [cMat, Na, Nb] = obj.createCostMatrix(rTracks);
 
                 if(isempty(cMat))
-                    disp('here');
+                    error('here');
                 end
                 
                 % run the JV algorithm
@@ -127,6 +127,20 @@ classdef MNinitiator < handle
             
         end
         
+        function h = plotTracks(obj)
+            
+            N = size(obj.trackList,2);
+            map = jet(N);
+            h = zeros(1,N);            
+            
+            hold on;            
+            for k = 1:N
+                x = obj.trackList(k).xu(1,:);
+                y = obj.trackList(k).xu(3,:);
+                h(k) = plot(x,y,'color',map(k,:));
+            end
+            hold off;
+        end
     end
     
     %% private methods
