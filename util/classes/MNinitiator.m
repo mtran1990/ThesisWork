@@ -4,6 +4,7 @@ classdef MNinitiator < handle
         % To confirm a track, first N1 measurements must be inside the gate
         % and at least M2 of the next N2 measurements must be inside the
         % gate
+        % Confirmed tracks will be deleted if they are not updated within Nd steps
         
         % Tracker Parameters
         % tracker:
@@ -11,6 +12,7 @@ classdef MNinitiator < handle
         % N1   : see above
         % M2   : see above
         % N2   : see above
+        % Nd   : see above
         tracker
         
         % Simulation Parameters
@@ -32,12 +34,14 @@ classdef MNinitiator < handle
         % list of all tracks
         trackList
         
-        % 4xN vector tracking the state of N tracks
-        % [s m mbar n]'
+        % 5xN vector tracking the state of N tracks
+        % [s m mbar n nd]'
         % s    : deleted, tentative, or confirmed state (0, 1, or 2)
         % m    : # of measurements collected since creation
-        % mbar : # of missed measurements
+        % mbar : # of missed measurements        
         % n    : age of initiator
+        % nd   : consecutively missed measurements
+        % note: should I change this to a struct array instead?        
         trackStates
     end
     
@@ -66,27 +70,44 @@ classdef MNinitiator < handle
         end
         
         function [validTracks,tList] = getValidTracks(obj)
-            % validTracks: 1xT logical vector, where T is the total number
-            %              of current tracks for this node
+            % validTracks: 1xT index vector, where T is the number
+            %              of valid tracks for this node, and each element
+            %              represents that track's index in the full list
             % tList      : list of valid tracks in the trackList
             
-            % (confirmed and tentative only for now)
-            validTracks = obj.trackStates(1,:) ~= 0;
-            tList = obj.trackList(validTracks);
-            
+            % can't return values unless tracks have been initialized
+            if(~isempty(obj.trackList))
+                % confirmed and tentative only for now
+                % also, track must have been updated at least once, i.e.
+                % age is 1 or greater
+                validTracks = find(obj.trackStates(1,:) ~= 0);
+                tList = obj.trackList(validTracks);
+            else
+                validTracks = [];
+                tList = [];
+            end
         end
         
         function matchTracks(obj,rTracks)
             % rTracks: received tracks from another node
             
-            % find the cost matrix
-            [cMat, Na, Nb] = obj.createCostMatrix(rTracks);
+            % right now can only run if this node has tracks to match to
+            % consider copying tracks from other node if this is the case?
+            if(~(isempty(obj.trackList) || isempty(rTracks) ))
             
-            % run the JV algorithm
-            rowsol = lapjv(cMat);
-            
-            % combine track data
-            obj.combineTracks(rowsol,rTracks,Na,Nb);
+                % find the cost matrix
+                [cMat, Na, Nb] = obj.createCostMatrix(rTracks);
+
+                if(isempty(cMat))
+                    disp('here');
+                end
+                
+                % run the JV algorithm
+                rowsol = lapjv(cMat);
+
+                % combine track data
+                obj.combineTracks(rowsol,rTracks,Na,Nb);
+            end
         end
         
         function updateTrackStates(obj)
@@ -96,13 +117,12 @@ classdef MNinitiator < handle
             % 2) Valid Tracks with measurements inside their gates: these
             %    are updated
             % 3) Valid Tracks with no measurements inside their gates
-            [validTracks,tList] = getValidTracks;
+            [validTracks,tList] = obj.getValidTracks;
             
             N = length(tList);
             for k = 1:N
-                
-                
-                
+                updated = tList(k).iterFilter;
+                obj.iterState(updated,validTracks(k));
             end
             
         end
@@ -112,17 +132,18 @@ classdef MNinitiator < handle
     %% private methods
     methods (Access = private)
         
-        function initTrack(obj,z)
-            k = length(obj.trackList)+1;
+        function initTrack(obj,z)            
             
             % state vector is [x x' y y']
-            x0 = [z(1); 0; z(2); 0];
+            x0 = [z(1); 0; z(2); 0];            
+            P0 = obj.genP0mat;            
+            params = obj.genKFparams(x0,P0);
             
-            P0 = obj.genP0mat;
-            
-            params = genKFparams(x0,P0);
-            
-            obj.trackList(k) = KCFilter(params);
+            if(isempty(obj.trackList))
+                obj.trackList = KCFilter(params);
+            else
+                obj.trackList = [obj.trackList KCFilter(params)];
+            end            
             
         end
                 
@@ -135,26 +156,30 @@ classdef MNinitiator < handle
         end
         
         function createNewTracks(obj,z)
-            % assuming N measurements are arranged as 2xN
-            N = size(z,2);
-            for k = 1:N
-                initTrack(z(:,k));
-            end
             
-            if(isempty(obj.trackStates))
-                obj.trackStates = ones(4,N);
-                obj.trackStates(3,:) = 0;
-            else
-                tmp = ones(4,N);
-                tmp(3,:) = 0;
-                obj.trackStates = [obj.trackStates tmp];
+            % can only create tracks if z is non-empty
+            if(~isempty(z))
+                % assuming N measurements are arranged as 2xN
+                N = size(z,2);
+                for k = 1:N
+                    obj.initTrack(z(:,k));
+                end
+
+                if(isempty(obj.trackStates))
+                    obj.trackStates = zeros(5,N);
+                    obj.trackStates(1,:) = 1;
+                else
+                    tmp = zeros(5,N);
+                    tmp(1,:) = 1;
+                    obj.trackStates = [obj.trackStates tmp];
+                end
             end
             
         end
         
         function clustAndUpdateTracks(obj,z)
             
-            [validTracks,tList] = getValidTracks;
+            [validTracks,tList] = obj.getValidTracks;
             
             % need to gate the measurements
             vMat = obj.getValidationMat(z,tList);
@@ -164,13 +189,10 @@ classdef MNinitiator < handle
                 obj.clusterTgts(vMat);
 
             % update tracks in clusters
-            obj.updateTracks(measVec,tgtsVec,tList,z,numClust);
-            
-            % TODO: update track states
-%             obj.updateTrackStates(validTracks,tgtsOutClus);
+            obj.updateTracks(measVec,tgtsVec,tList,z,numClust,tgtsOutClus);            
             
             % create new tracks from leftover measurements
-            zOut = z(measOutClus);            
+            zOut = z(:,measOutClus);
             obj.createNewTracks(zOut);
             
         end
@@ -185,7 +207,7 @@ classdef MNinitiator < handle
             % update targets in clusters
             for k = 1:numClust
                 
-                zClust = z(measVec{k});
+                zClust = z(:,measVec{k});
                 tgts = tList(tgtsVec{k});
                 
                 for t = tgts                    
@@ -202,8 +224,6 @@ classdef MNinitiator < handle
             
         end
         
-
-        
         function P0 = genP0mat(obj)
             
             % following the format given in Ozkan, Lecture 2 for single
@@ -217,7 +237,7 @@ classdef MNinitiator < handle
             P0 = diag([sigA2 sigV2 sigA2 sigV2]);
         end
         
-        function [vMat] = getValidationMat(~,z,tList)
+        function [vMat] = getValidationMat(obj,z,tList)
             
             % N: # of measurements
             N = size(z,2);
@@ -235,7 +255,7 @@ classdef MNinitiator < handle
                     
                     y = z(:,i);
                     
-                    if(insideGate(S,y,yhat))
+                    if(obj.insideGate(S,y,yhat))
                         vMat(i,j) = 1;
                     end
                     
@@ -269,7 +289,14 @@ classdef MNinitiator < handle
         
         function inside = insideGate(obj,S,y,yhat)
             
-            U = cholcov(S);
+            % first and third elements correspond to the measurement
+            % covariances
+            S_ = S([1 3],[1 3]);
+            
+            % make sure S_ is symmetric
+            S_ = 0.5*(S_+S_.');
+            
+            U = cholcov(S_);
             
             testStat = norm( (U.'\(y-yhat)), 2);
             
@@ -399,13 +426,13 @@ classdef MNinitiator < handle
             if(Na<Nb)
                 
                 aug = inf(Na);
-                aug(eye(Na)) = g;
+                aug(logical(eye(Na))) = g;
                 
                 cMat = [costs aug];
             else
                 
                 aug = inf(Nb);
-                aug(eye(Nb)) = g;
+                aug(logical(eye(Nb))) = g;
                 
                 cMat = [costs; aug];
             end
@@ -498,6 +525,56 @@ classdef MNinitiator < handle
                     
                 end
                 
+            end
+            
+        end
+        
+        function iterState(obj,updated,idx)
+            
+            N1 = obj.tracker.N1;
+            M2 = obj.tracker.M2;
+            N2 = obj.tracker.N2;
+            Nd = obj.tracker.Nd;
+            
+            % increase the age of the track by 1
+            obj.trackStates(4,idx) = obj.trackStates(4,idx)+1;
+            
+            % if updated, increase the number of measurements collected and
+            % reset the number of consecutively missed measurements
+            % else, increase the number of missed measurements and add one
+            % to the number of consecutively missed measurements
+            if(isempty(updated) || updated)
+                obj.trackStates(2,idx) = obj.trackStates(2,idx)+1;
+                obj.trackStates(5,idx) = 0;
+            else
+                obj.trackStates(3,idx) = obj.trackStates(3,idx)+1;
+                obj.trackStates(5,idx) = obj.trackStates(5,idx)+1;
+            end
+            
+            % if we've reached the Nd missed measurements, then delete the
+            % track
+            if(obj.trackStates(5,idx)>= Nd)
+                obj.trackStates(1,idx) = 0;
+            else
+                % we need N1 consecutive measurements to move from tentative
+                % to confirmed
+                if(obj.trackStates(1,idx) <= N1)
+
+                    % if we missed any of the first N1 measurements, then
+                    % delete the track
+                    if(obj.trackStates(3,idx)>0)
+                        obj.trackStates(1,idx) = 0;
+                    end
+
+                else
+                    if(obj.trackStates(3,idx)>(M2+N2))
+                        obj.trackStates(1,idx) = 0;
+                    elseif(obj.trackStates(2,idx)>=(N1+M2))
+                        obj.trackStates(1,idx) = 2;
+                    else
+                        obj.trackStates(1,idx) = 1;
+                    end
+                end
             end
             
         end

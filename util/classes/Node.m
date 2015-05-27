@@ -34,6 +34,17 @@ classdef Node < handle
             obj.TrackManager.addMeasurement(tgtMeas);
         end
         
+        function [validTracks,tList] = getValidTracks(obj)
+            % validTracks: 1xT index vector, where T is the number
+            %              of valid tracks for this node, and each element
+            %              represents that track's index in the full list
+            % tList      : list of valid tracks in the trackList
+            
+            % (confirmed and tentative only for now)
+            [validTracks, tList] = obj.TrackManager.getValidTracks;
+            
+        end
+        
         function matchTracks(obj, nList)
             % nList: a list of nodes connected with the current node
             for n = nList

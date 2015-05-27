@@ -32,7 +32,7 @@ classdef KCFilter < handle
             
             
             obj.sigA2 = params.sigA2;
-            sigM2 = params.M2;
+            sigM2 = params.sigM2;
             
             Q_ = [dt^4/4 dt^3/2; dt^3/2 dt^2]*obj.sigA2;
             obj.Q = [Q_ zeros(2); zeros(2) Q_];
@@ -46,7 +46,7 @@ classdef KCFilter < handle
         function addMeasurement(obj, z, Pd, Pg, lam)
             
             % can't calculate weights without measurements
-            if(nargin == 4)
+            if(nargin == 5)
                 
                 beta = obj.calculateWeights(z,Pd,Pg,lam);
                 obj.beta0 = beta(1);
@@ -60,61 +60,78 @@ classdef KCFilter < handle
                 % need to sum across rows
                 zVec = sum(beta_tmp(:,2:end).*z,2);
 
-                obj.u = obj.H.'*obj.R\zVec;
-                obj.U = obj.H.'*obj.R\obj.H;                
+                obj.u = obj.H.'*(obj.R\zVec);
+                obj.U = obj.H.'*(obj.R\obj.H);
             else
                 obj.u = zeros(4,1);
                 obj.U = zeros(4,4);
             end
             
+            % right now, I'm still calling this function even when a track
+            % has no new measurements in order to reset the values of u, U,
+            % and xdiff
             obj.xdiff = zeros(4,1);
         end
         
         function addTrack(obj,T2)
-            % adds the info from another track
-            obj.u = obj.u+T2.u;
-            obj.U = obj.u+T2.U;
-            
-            obj.xdiff = obj.xdiff + (obj.xp-T2.xp);
+            if(~isempty(obj.u))
+                % adds the info from another track
+                obj.u = obj.u+T2.u;
+                obj.U = obj.U+T2.U;
+
+                obj.xdiff = obj.xdiff + (obj.xp-T2.xp);
+            end
         end
         
         function updated = iterFilter(obj)
             
-            % probably need to rewrite this part
-            % thinking of returning a boolean, where true is returned when
-            % the track was updated with measurements and false is returned
-            % otherwise
-            % might be able to use that to help update the track states
+            % updated: true if filter updated with measurements
+            %          false if filter updated with no measurements
+            %          empty if filter did not update
             
-            % if u is a column vectors of zeros, then the track didn't
-            % receive any measurements
-            if(isequal(zeros(4,1),obj.u))
-                % update step
-                obj.xu = obj.xp;
+            % if u is empty, track hasn't updated yet, so don't do anything
+            % yet
+            if(~isempty(obj.u))
+            
+                % if u is a column vectors of zeros, then the track didn't
+                % receive any measurements
+                if(isequal(zeros(4,1),obj.u))
+                    % update step
+                    xu_ = obj.xp;
+
+                    % prediction step
+                    % NOTE: not sure if this part is right, need to double
+                    % check
+                    obj.P = obj.F*obj.P*obj.F.'+obj.Q;
+                    obj.xp = obj.F*xu_;
+                    updated = false;
+                else            
+                    eps = 0.25;
+                    y = obj.u;
+                    S = obj.U;
+
+                    S0 = (1-obj.beta0)*S;
+
+                    % update step
+                    Mtild = (inv(obj.P)+S);
+                    K = Mtild\(obj.H).'/obj.R;
+                    M = obj.beta0*obj.P+(1-obj.beta0)*inv(Mtild)+K*obj.pTild*K.';
+
+                    xu_ = obj.xp + Mtild\(y-S0*obj.xp)+...
+                        eps*M/(1+norm(M))*obj.xdiff;                
+
+                    % prediction step
+                    obj.P = obj.F*M*obj.F.'+obj.Q;
+                    obj.xp = obj.F*xu_;
+                    updated = true;
+                end
+
+                obj.updateState(xu_);
+            
+            else
                 
-                % prediction step
-                % NOTE: not sure if this part is right, need to double
-                % check
-                obj.P = obj.P;
-                obj.xp = obj.F*obj.xu;
-            else            
-                eps = 0.25;
-                y = obj.u;
-                S = obj.U;
-
-                S0 = (1-obj.beta0)*S;
-
-                % update step
-                Mtild = (inv(obj.P)+S);
-                K = Mtild\(obj.H).'/obj.R;
-                M = obj.beta0*obj.P+(1-obj.beta0)/(Mtild)+K*obj.pTild*K.';
-
-                obj.xu = obj.xp + Mtild\(y-S0*obj.xp)+...
-                    eps*M/(1+norm(M))*obj.xdiff;
-
-                % prediction step
-                obj.P = obj.F*M*obj.F.'+obj.Q;
-                obj.xp = obj.F*obj.xu;
+                updated = [];
+            
             end
             
         end
@@ -166,10 +183,11 @@ classdef KCFilter < handle
             
             Beta(1) = b/den;
             
-            for k = 2:N+1
+            for k = 1:N
                 
                 num = exp(-zTild(:,k).'*(innCov\zTild(:,k))/2);
-                Beta(k) = num/den;
+                % first element in beta is for false alarms
+                Beta(k+1) = num/den;
                 
             end
             
@@ -178,24 +196,32 @@ classdef KCFilter < handle
         
         function pTild = calcPTild(obj,beta,z)
             
-            N = size(z,2);
-            pTild = zeros(N);
+            [M,N] = size(z);
+            pTild = zeros(M);
             
             beta_tmp = ones(2,1)*beta(2:end);
             
             zi = sum(beta_tmp.*z,2);
-            mat2 = zi*zi.';
+            er = zi-obj.H*obj.xp;
+            mat2 = er*er.';
             
             for k = 1:N
                 
                 zTild = z(:,k) - obj.H*obj.xp;                
                 mat = zTild*zTild.';
                 
-                pTild = pTild+beta(k+1)*mat-mat2;
+                pTild = pTild+beta(k+1)*mat;
             end
+            
+            pTild = pTild-mat2;
             
         end
         
+        function updateState(obj,xu)
+            
+            obj.xu = [obj.xu xu];
+            
+        end
     end
 end
         

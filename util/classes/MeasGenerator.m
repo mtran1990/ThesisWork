@@ -25,7 +25,7 @@ classdef MeasGenerator < handle
             clutter = obj.genClutter;
             meas = obj.genMeas(tgtLoc);
             
-            out = [clutter meas];
+            out = [clutter meas];            
             
         end
         

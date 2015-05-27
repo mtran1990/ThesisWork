@@ -7,7 +7,7 @@ utilDir = genpath('./util');
 addpath(utilDir);
 
 A = 1.5;
-freq = 0.2;
+freq = 0.1;
 
 tgtPath = @(t)(circPath(A,freq,t));
 
@@ -27,13 +27,15 @@ sim = SignalSimulator(0,params);
 
 sim.showMap(1);
 sim.printDist;
-t = linspace(0,5,100);
+t = linspace(0,10,100);
 sim.plotPath(1,t);
 sim.showConnections(1);
 
 %% Measurement Tests
 tgtLoc = tgtPath(0);
 
+sim.simulate;
+% sim.iterSim;
 % sim.measTgts(tgtLoc);
 % sim.exchangeMeas;
 % sim.getRawEstimates;

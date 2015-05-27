@@ -124,19 +124,25 @@ classdef SignalSimulator < handle
             end
         
         end
-                
+        
+        function simulate(obj)
+            
+            while(~obj.isDone)
+                obj.iterSim;
+            end
+            
+        end
+        
         function iterSim(obj)
             
             % runs one iteration of the simulation
             obj.advanceTime;
             
             loc = obj.getTgtLocNow;
-            obj.measTgts(tgt,loc);
+            obj.measTgts(loc);
             obj.exchangeMeas;
-            
-        end
-        
-
+            obj.updateNodes;
+        end        
         
         function getRawEstimates(obj)
             % tells each node to use the pooled measurements to give an
@@ -208,6 +214,10 @@ classdef SignalSimulator < handle
            
             loc = obj.tgtPath(obj.tParams.now);
             
+        end
+        
+        function done = isDone(obj)
+            done = obj.tParams.now > obj.tParams.end;
         end
     end
     

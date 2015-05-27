@@ -11,13 +11,15 @@ mapDims = [12 12];
 s = 0;
 e = 10;
 dt = 0.1;
+n = s;
 
-tParams = struct('start',s,'end',e,'dt',dt);
+tParams = struct('start',s,'end',e,'dt',dt,'now',n);
 
 % Right now I'm only working on the M-N tracker
 % To confirm a track, first N1 measurements must be inside the gate
 % and at least M2 of the next N2 measurements must be inside the
 % gate
+% Confirmed tracks will be deleted if they are not updated within Nd steps
 
 % Tracker Parameters
 % tracker:
@@ -25,13 +27,15 @@ tParams = struct('start',s,'end',e,'dt',dt);
 % N1   : see above
 % M2   : see above
 % N2   : see above
+% Nd   : see above
 
 tType = 'MN';
 N1    = 2;
 M2    = 2;
 N2    = 3;
+Nd    = 5;
 
-tracker = struct('tType',tType,'N1',N1,'M2',M2,'N2',N2);
+tracker = struct('tType',tType,'N1',N1,'M2',M2,'N2',N2,'Nd',Nd);
 
 % Simulation Parameters
 % sParams:
