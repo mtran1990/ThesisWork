@@ -291,7 +291,10 @@ classdef MNinitiator < handle
             for i=1:N
                 for j=1:M
                     
-                    S = tList(j).P;
+                    % S is the covariance of the innovation vector
+                    % H*P_k|k-1*H.'+R?
+%                     S = tList(j).P;
+                    S = tList(j).getInnCovariance;
                     yhat = tList(j).H*tList(j).xp;
                     
                     y = z(:,i);
@@ -330,12 +333,12 @@ classdef MNinitiator < handle
         
         function inside = insideGate(obj,S,y,yhat)
             
-            % first and third elements correspond to the measurement
-            % covariances
-            S_ = S([1 3],[1 3]);
+%             % first and third elements correspond to the measurement
+%             % covariances
+%             S_ = S([1 3],[1 3]);
             
             % make sure S_ is symmetric
-            S_ = 0.5*(S_+S_.');
+            S_ = 0.5*(S+S.');
             
             U = cholcov(S_);
             

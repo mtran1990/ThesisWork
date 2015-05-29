@@ -62,6 +62,11 @@ classdef KCFilter < handle
 
                 obj.u = obj.H.'*(obj.R\zVec);
                 obj.U = obj.H.'*(obj.R\obj.H);
+                
+                if(obj.u(1) < 0)
+                    error('here');
+                end
+                
             else
                 obj.u = zeros(4,1);
                 obj.U = zeros(4,4);
@@ -118,12 +123,19 @@ classdef KCFilter < handle
                     M = obj.beta0*obj.P+(1-obj.beta0)*inv(Mtild)+K*obj.pTild*K.';
 
                     xu_ = obj.xp + Mtild\(y-S0*obj.xp)+...
-                        eps*M/(1+norm(M))*obj.xdiff;                
+                        eps*M/(1+norm(M,'fro'))*obj.xdiff;                
 
                     % prediction step
-                    obj.P = obj.F*M*obj.F.'+obj.Q;
+                    P = obj.F*M*obj.F.'+obj.Q;
                     obj.xp = obj.F*xu_;
                     updated = true;
+                    
+                    if(P(1) < 0)
+                        error('here');
+                    end
+                    
+                    obj.P = P;
+                    
                 end
 
                 obj.updateState(xu_);
@@ -146,6 +158,12 @@ classdef KCFilter < handle
             cost = c+log(det(S));
         end
         
+        function S = getInnCovariance(obj)
+            
+            S = obj.H*obj.P*obj.H.'+obj.R;
+            
+        end
+        
     end
     
     %% private methods
@@ -157,7 +175,11 @@ classdef KCFilter < handle
             % Pg : Probability of measurement lying inside the gate
             % lam: Mean of the poisson distribution of false alarms            
             
-            zTild = z - obj.H*obj.xp;
+            % need to convert tmp to be the same size as zTild
+            tmp = obj.H*obj.xp;
+            tmp = tmp*ones(1,size(z,2));
+            
+            zTild = z - tmp;
             
             % innovation covariance (covariance of zTild?)
             innCov = obj.H*obj.P*obj.H'+obj.R;
