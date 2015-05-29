@@ -238,23 +238,33 @@ classdef KCFilter < handle
         function pTild = calcPTild(obj,beta,z)
             
             [M,N] = size(z);
-            pTild = zeros(M);
+            tmp = zeros(M);
+            
+            y = obj.H*obj.xp;
             
             beta_tmp = ones(2,1)*beta(2:end);
             
-            zi = sum(beta_tmp.*z,2);
-            er = zi-obj.H*obj.xp;
-            mat2 = er*er.';
+            % Note: there was an error in the paper by Sandell I think, I'm
+            % using the equation from Fortmann instead here
+            % er needs to be the same size as z, so multiply "y" by 1xN
+            % matrix
+            er = z-y*ones(1,N);
+            zi = sum(beta_tmp.*er,2);
+            mat2 = zi*zi.';
             
             for k = 1:N
                 
-                zTild = z(:,k) - obj.H*obj.xp;                
+                zTild = z(:,k) - y;                
                 mat = zTild*zTild.';
                 
-                pTild = pTild+beta(k+1)*mat;
+                tmp = tmp+beta(k+1)*mat;
             end
             
-            pTild = pTild-mat2;
+            pTild = tmp-mat2;
+            
+            if(pTild(1) < 0)
+                error('here');
+            end
             
         end
         

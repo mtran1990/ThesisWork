@@ -136,8 +136,7 @@ classdef MNinitiator < handle
             
             if(isempty(hand))
                 N = size(obj.trackList,2);
-                maxColor = 10;
-                map = jet(maxColor);
+                map = lines(N);
                 h = zeros(1,N);
 
                 hold on;
@@ -149,8 +148,7 @@ classdef MNinitiator < handle
                         x = obj.trackList(k).xu(1,:);
                         y = obj.trackList(k).xu(3,:);
                     end
-                    idx = 1+mod(k,maxColor);
-                    h(k) = plot(ax,x,y,'color',map(idx,:));
+                    h(k) = plot(ax,x,y,'color',map(k,:));
                 end
                 hold off;
             else

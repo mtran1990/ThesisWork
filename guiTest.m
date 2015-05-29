@@ -5,13 +5,13 @@ clear;
 utilDir = genpath('./util');
 addpath(utilDir);
 
-A = 1.5;
+A = 1;
 freq = 0.1;
 
-tgtPath = @(t)(circPath(A,freq,t));
+% tgtPath = @(t)(circPath(A,freq,t));
 
 % two targets
-% tgtPath = @(t)([circPath(A,freq,t) circPath(2*A,freq,t)]);
+tgtPath = @(t)([circPath(A,freq,t) circPath(2.5*A,freq,t)]);
 %% Node Tests
 a = Node;
 b = Node(1,2);

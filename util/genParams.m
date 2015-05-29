@@ -9,7 +9,7 @@ mapDims = [12 12];
 % dt   : time between measurements (Note: also used below)
 % now  : current time
 s = 0;
-e = 10;
+e = 20;
 dt = 0.1;
 n = s;
 
@@ -54,9 +54,9 @@ tracker = struct('tType',tType,'N1',N1,'M2',M2,'N2',N2,'Nd',Nd);
 dim   = 2;
 maxV  = 10;
 dt    = dt;
-sigA2 = 0.1;
+sigA2 = 0.5;
 sigM2 = 0.1;
-n0    = 0.5;
+n0    = 0.1;
 Kap   = 3;
 Pd    = 0.95;
 Pg    = 0.95;
