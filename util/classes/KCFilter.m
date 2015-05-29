@@ -18,6 +18,8 @@ classdef KCFilter < handle
         
         beta0
         pTild
+        
+        gamG
     end
     
     %% methods
@@ -41,6 +43,8 @@ classdef KCFilter < handle
             
             obj.xp = params.x0;
             obj.P = params.P0;
+            
+            obj.gamG = params.gamG;
         end
         
         function addMeasurement(obj, z, Pd, Pg, lam)
@@ -63,9 +67,9 @@ classdef KCFilter < handle
                 obj.u = obj.H.'*(obj.R\zVec);
                 obj.U = obj.H.'*(obj.R\obj.H);
                 
-                if(obj.u(1) < 0)
-                    error('here');
-                end
+%                 if(obj.u(1) < 0)
+%                     error('here');
+%                 end
                 
             else
                 obj.u = zeros(4,1);
@@ -156,11 +160,26 @@ classdef KCFilter < handle
             c = xdiff.'*S*xdiff;
             
             cost = c+log(det(S));
-        end
+        end        
         
-        function S = getInnCovariance(obj)
+        function inside = checkGate(obj,y)
             
-            S = obj.H*obj.P*obj.H.'+obj.R;
+            S = obj.getInnCovariance;
+            
+            yhat = obj.H*obj.xp;
+            
+            % make sure S_ is symmetric
+            S_ = 0.5*(S+S.');
+            
+            U_ = cholcov(S_);
+            
+            testStat = norm( (U_.'\(y-yhat)), 2);
+            
+            if testStat<= obj.gamG
+                inside = true;
+            else
+                inside = false;
+            end
             
         end
         
@@ -244,6 +263,14 @@ classdef KCFilter < handle
             obj.xu = [obj.xu xu];
             
         end
+        
+        function S = getInnCovariance(obj)
+            % S is the covariance of the innovation vector
+            % H*P_k|k-1*H.'+R?
+            S = obj.H*obj.P*obj.H.'+obj.R;
+            
+        end
+        
     end
 end
         

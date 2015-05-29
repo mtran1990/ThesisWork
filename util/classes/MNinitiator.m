@@ -289,17 +289,11 @@ classdef MNinitiator < handle
             vMat = zeros(N,M);
             
             for i=1:N
-                for j=1:M
-                    
-                    % S is the covariance of the innovation vector
-                    % H*P_k|k-1*H.'+R?
-%                     S = tList(j).P;
-                    S = tList(j).getInnCovariance;
-                    yhat = tList(j).H*tList(j).xp;
+                for j=1:M                    
                     
                     y = z(:,i);
                     
-                    if(obj.insideGate(S,y,yhat))
+                    if(tList(j).checkGate(y))
                         vMat(i,j) = 1;
                     end
                     
@@ -330,27 +324,6 @@ classdef MNinitiator < handle
             
         end
         %}
-        
-        function inside = insideGate(obj,S,y,yhat)
-            
-%             % first and third elements correspond to the measurement
-%             % covariances
-%             S_ = S([1 3],[1 3]);
-            
-            % make sure S_ is symmetric
-            S_ = 0.5*(S+S.');
-            
-            U = cholcov(S_);
-            
-            testStat = norm( (U.'\(y-yhat)), 2);
-            
-            if testStat<= obj.sParams.gamG
-                inside = true;
-            else
-                inside = false;
-            end
-            
-        end
         
         % returns a cell array of tgts separated into clusters
         function [measInClus, tgtsInClus, numClust, measOutClus, ...
