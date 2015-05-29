@@ -115,7 +115,7 @@ classdef KCFilter < handle
                     obj.xp = obj.F*xu_;
                     updated = false;
                 else            
-                    eps = 0.25;
+                    eps = 0.01;
                     y = obj.u;
                     S = obj.U;
 
