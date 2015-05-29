@@ -141,12 +141,15 @@ classdef MNinitiator < handle
 
                 hold on;
                 for k = 1:N
-                    if(isempty(obj.trackList(k).xu))
-                        x = obj.trackList(k).xp(1,:);
-                        y = obj.trackList(k).xp(3,:);
+                    
+                    [xu,xp,~] = obj.trackList(k).getState(true);
+                    
+                    if(isempty(xu))
+                        x = xp(1,:);
+                        y = xp(3,:);
                     else
-                        x = obj.trackList(k).xu(1,:);
-                        y = obj.trackList(k).xu(3,:);
+                        x = xu(1,:);
+                        y = xu(3,:);
                     end
                     h(k) = plot(ax,x,y,'color',map(k,:));
                 end
@@ -176,12 +179,12 @@ classdef MNinitiator < handle
             % state vector is [x x' y y']
             x0 = [z(1); 0; z(2); 0];            
             P0 = obj.genP0mat;            
-            params = obj.genKFparams(x0,P0);
+%             params = obj.genKFparams(x0,P0);
             
             if(isempty(obj.trackList))
-                obj.trackList = KCFilter(params);
+                obj.trackList = KCFilter(obj.sParams,x0,P0);
             else
-                obj.trackList = [obj.trackList KCFilter(params)];
+                obj.trackList = [obj.trackList KCFilter(obj.sParams,x0,P0)];
             end            
             
         end
@@ -218,7 +221,7 @@ classdef MNinitiator < handle
         
         function clustAndUpdateTracks(obj,z)
             
-            [validTracks,tList] = obj.getValidTracks;
+            [~,tList] = obj.getValidTracks;
             
             % need to gate the measurements
             vMat = obj.getValidationMat(z,tList);
@@ -236,12 +239,8 @@ classdef MNinitiator < handle
             
         end
         
-        function updateTracks(obj,measVec,tgtsVec,tList,z,numClust,...
+        function updateTracks(~,measVec,tgtsVec,tList,z,numClust,...
                 tgtsOutClus)
-            
-            Pd = obj.sParams.Pd;
-            Pg = obj.sParams.Pg;
-            lam = obj.sParams.Bfa*obj.sParams.V;
             
             % update targets in clusters
             for k = 1:numClust
@@ -250,7 +249,7 @@ classdef MNinitiator < handle
                 tgts = tList(tgtsVec{k});
                 
                 for t = tgts                    
-                    t.addMeasurement(zClust,Pd,Pg,lam);                    
+                    t.addMeasurement(zClust);                    
                 end
                 
             end
@@ -276,7 +275,7 @@ classdef MNinitiator < handle
             P0 = diag([sigA2 sigV2 sigA2 sigV2]);
         end
         
-        function [vMat] = getValidationMat(obj,z,tList)
+        function [vMat] = getValidationMat(~,z,tList)
             
             % N: # of measurements
             N = size(z,2);

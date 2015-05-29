@@ -2,57 +2,66 @@
 classdef KCFilter < handle
     %% properties
     properties (SetAccess = private)
-        F
-        H
-        Q
-        R
-        sigA2
-        xu
+        % Model Parameters
+        % modelParams:
+        % F: state transition matrix
+        % H: state vector to measurement matrix (observation model)
+        % Q: model noise covariance
+        % R: measurement noise covariance
+        modelParams
+
+        % State Parameters
+        % stateParams:
+        % xu: 4xN   updated state vector
+        % xp: 4xN   predicted state
+        % P : 4x4xN covariance matrix
+        stateParams
         
-        P
-        xp
-        
+        % information vector / matrix
+        % the rest are temporary variables used when updating the filter
         u
         U
-        xdiff
-        
+        xdiff        
         beta0
         pTild
-        
-        gamG
+                
+        % Simulation Parameters
+        % sParams:
+        % dim   :    dimension of the simulation (e.g. 2D)
+        % maxV  :    Max Velocity
+        % dt    :    time between measurements
+        % sigA2 :    std. dev. of acceleration in model
+        % sigM2 :    variance of measurements
+        % n0    :    noise density
+        % Kap   :    gate size parameter        
+        % Pd    :    Probability of detection
+        % Pg    :    Probability of a measurement lying inside a gate
+        % gamG  :    Gate theshold, calculated from Pg
+        % Bfa   :    Density of false alarm measurements
+        % V     :    Volume of the simulation        
+        sParams
     end
     
     %% methods
     methods (Access = public)
         
-        function obj = KCFilter(params)
-            dt = params.dt;
-            F_ = [1 dt; 0 1];
-            obj.F = [F_ zeros(2,2); zeros(2,2) F_];
+        function obj = KCFilter(sParams,x0,P0)
+            
+            obj.sParams = sParams;            
+            obj.initModel;            
+            obj.initState(x0,P0);
 
-            obj.H = [1 0 0 0; 0 0 1 0];
-            
-            
-            obj.sigA2 = params.sigA2;
-            sigM2 = params.sigM2;
-            
-            Q_ = [dt^4/4 dt^3/2; dt^3/2 dt^2]*obj.sigA2;
-            obj.Q = [Q_ zeros(2); zeros(2) Q_];
-            
-            obj.R = [sigM2 0; 0 sigM2];
-            
-            obj.xp = params.x0;
-            obj.P = params.P0;
-            
-            obj.gamG = params.gamG;
         end
         
-        function addMeasurement(obj, z, Pd, Pg, lam)
+        function addMeasurement(obj, z)
             
             % can't calculate weights without measurements
-            if(nargin == 5)
+            if(nargin == 2)
                 
-                beta = obj.calculateWeights(z,Pd,Pg,lam);
+                % get the model parameters
+                [~,H,~,R] = obj.getModelParams;
+                
+                beta = obj.calculateWeights(z);
                 obj.beta0 = beta(1);
                 obj.pTild = obj.calcPTild(beta,z);
                 
@@ -64,12 +73,8 @@ classdef KCFilter < handle
                 % need to sum across rows
                 zVec = sum(beta_tmp(:,2:end).*z,2);
 
-                obj.u = obj.H.'*(obj.R\zVec);
-                obj.U = obj.H.'*(obj.R\obj.H);
-                
-%                 if(obj.u(1) < 0)
-%                     error('here');
-%                 end
+                obj.u = H.'*(R\zVec);
+                obj.U = H.'*(R\H);
                 
             else
                 obj.u = zeros(4,1);
@@ -88,7 +93,11 @@ classdef KCFilter < handle
                 obj.u = obj.u+T2.u;
                 obj.U = obj.U+T2.U;
 
-                obj.xdiff = obj.xdiff + (obj.xp-T2.xp);
+                % get the state variables
+                [~,xp ,~] = obj.getState;
+                [~,xp2,~] = T2.getState;
+                
+                obj.xdiff = obj.xdiff + (xp-xp2);
             end
         end
         
@@ -102,17 +111,23 @@ classdef KCFilter < handle
             % yet
             if(~isempty(obj.u))
             
+                % get the model parameters
+                [F,H,Q,R] = obj.getModelParams;
+                
+                % get the state variables
+                [~,xp,P] = obj.getState;
+                
                 % if u is a column vectors of zeros, then the track didn't
                 % receive any measurements
                 if(isequal(zeros(4,1),obj.u))
                     % update step
-                    xu_ = obj.xp;
+                    xu = xp;
 
                     % prediction step
                     % NOTE: not sure if this part is right, need to double
                     % check
-                    obj.P = obj.F*obj.P*obj.F.'+obj.Q;
-                    obj.xp = obj.F*xu_;
+                    P = F*P*F.'+Q;
+                    xp = F*xu;
                     updated = false;
                 else            
                     eps = 0.01;
@@ -122,27 +137,23 @@ classdef KCFilter < handle
                     S0 = (1-obj.beta0)*S;
 
                     % update step
-                    Mtild = (inv(obj.P)+S);
-                    K = Mtild\(obj.H).'/obj.R;
-                    M = obj.beta0*obj.P+(1-obj.beta0)*inv(Mtild)+K*obj.pTild*K.';
+                    Mtild = (inv(P)+S);
+                    K = Mtild\H.'/R;
+                    M = obj.beta0*P+...
+                        (1-obj.beta0)*eye(size(Mtild))/Mtild+...
+                        K*obj.pTild*K.';
 
-                    xu_ = obj.xp + Mtild\(y-S0*obj.xp)+...
+                    xu = xp + Mtild\(y-S0*xp)+...
                         eps*M/(1+norm(M,'fro'))*obj.xdiff;                
 
                     % prediction step
-                    P = obj.F*M*obj.F.'+obj.Q;
-                    obj.xp = obj.F*xu_;
+                    P = F*M*F.'+Q;
+                    xp = F*xu;
                     updated = true;
-                    
-                    if(P(1) < 0)
-                        error('here');
-                    end
-                    
-                    obj.P = P;
                     
                 end
 
-                obj.updateState(xu_);
+                obj.updateState(xu,xp,P);
             
             else
                 
@@ -155,18 +166,29 @@ classdef KCFilter < handle
         function cost = computeCost(obj,T2)
             % computes the cost between the current track and the given
             % track (using Mahalanobis distance)
-            S = (obj.P+T2.P);
-            xdiff = obj.xp-T2.xp;
-            c = xdiff.'*S*xdiff;
+            
+            % get the state variables
+            [~,xp ,P ]  = obj.getState;
+            [~,xp2,P2] = T2.getState;
+            
+            S = (P+P2);
+            xdiff_ = xp-xp2;
+            c = xdiff_.'*S*xdiff_;
             
             cost = c+log(det(S));
         end        
         
         function inside = checkGate(obj,y)
             
+            % get the model parameters
+            [~,H,~,~] = obj.getModelParams;
+            
+            % get the state variables
+            [~,xp,~]  = obj.getState;
+            
             S = obj.getInnCovariance;
             
-            yhat = obj.H*obj.xp;
+            yhat = H*xp;
             
             % make sure S_ is symmetric
             S_ = 0.5*(S+S.');
@@ -175,7 +197,7 @@ classdef KCFilter < handle
             
             testStat = norm( (U_.'\(y-yhat)), 2);
             
-            if testStat<= obj.gamG
+            if testStat<= obj.sParams.gamG
                 inside = true;
             else
                 inside = false;
@@ -183,28 +205,94 @@ classdef KCFilter < handle
             
         end
         
+        function [xu,xp,P] = getState(obj,getAll)
+            
+            % usually only the most recent values are needed
+            % if getAll is true, then, pull out all the state parameters
+            if(nargin < 2 || ~getAll)
+                if(~isempty(obj.stateParams.xu))
+                    xu = obj.stateParams.xu(:,end);
+                else
+                    xu = [];
+                end
+                xp = obj.stateParams.xp(:,end);
+                P  = obj.stateParams.P(:,:,end);            
+            else
+                xu = obj.stateParams.xu;
+                xp = obj.stateParams.xp;
+                P  = obj.stateParams.P;
+            end
+        end
+        
     end
     
     %% private methods
-    methods (Access = private)
+    methods (Access = private)                
         
-        function Beta = calculateWeights(obj, z, Pd, Pg, lam)
+        function initModel(obj)
+            
+            dt = obj.sParams.dt;
+            F_ = [1 dt; 0 1];
+            F = [F_ zeros(2,2); zeros(2,2) F_];
+
+            H = [1 0 0 0; 0 0 1 0];
+            
+            
+            sigA2 = obj.sParams.sigA2;
+            sigM2 = obj.sParams.sigM2;
+            
+            Q_ = [dt^4/4 dt^3/2; dt^3/2 dt^2]*sigA2;
+            Q = [Q_ zeros(2); zeros(2) Q_];
+            
+            R = [sigM2 0; 0 sigM2];            
+            
+            obj.modelParams = struct('F',F,'H',H,'Q',Q,'R',R);
+            
+        end
+        
+        function initState(obj,x0,P0)
+            
+            obj.stateParams = struct('xu',[],'xp',x0,'P',P0);
+            
+        end
+        
+        function [F,H,Q,R] = getModelParams(obj)
+            
+            F = obj.modelParams.F;
+            H = obj.modelParams.H;
+            Q = obj.modelParams.Q;
+            R = obj.modelParams.R;
+            
+        end                
+        
+        function Beta = calculateWeights(obj, z)
             % z  : 2xN vector of N measurements
             % Pd : Probability of Detection
             % Pg : Probability of measurement lying inside the gate
             % lam: Mean of the poisson distribution of false alarms            
             
+            % get the model parameters
+            [~,H,~,R] = obj.getModelParams;
+            
+            % get the state variables
+            [~,xp,P] = obj.getState;
+            
+            % get the necessary simulation parameters
+            Pd = obj.sParams.Pd;
+            Pg = obj.sParams.Pg;
+            lam = obj.sParams.Bfa*obj.sParams.V;
+            
             % need to convert tmp to be the same size as zTild
-            tmp = obj.H*obj.xp;
+            tmp = H*xp;
             tmp = tmp*ones(1,size(z,2));
             
             zTild = z - tmp;
             
             % innovation covariance (covariance of zTild?)
-            innCov = obj.H*obj.P*obj.H'+obj.R;
+            innCov = H*P*H.'+R;
             
             % dimension of target
-            dim = 2;
+            dim = obj.sParams.dim;
             
             b = (2*pi)^(dim/2)*lam*sqrt(det(innCov))*(1-Pd*Pg)/Pd;
             
@@ -237,10 +325,16 @@ classdef KCFilter < handle
         
         function pTild = calcPTild(obj,beta,z)
             
+            % get the model parameters
+            [~,H,~,~] = obj.getModelParams;
+            
+            % get the state variables
+            [~,xp,~] = obj.getState;
+            
             [M,N] = size(z);
             tmp = zeros(M);
             
-            y = obj.H*obj.xp;
+            y = H*xp;
             
             beta_tmp = ones(2,1)*beta(2:end);
             
@@ -262,22 +356,27 @@ classdef KCFilter < handle
             
             pTild = tmp-mat2;
             
-            if(pTild(1) < 0)
-                error('here');
-            end
-            
         end
         
-        function updateState(obj,xu)
+        function updateState(obj,xu,xp,P)
             
-            obj.xu = [obj.xu xu];
+            obj.stateParams.xu(:,end+1) = xu;
+            obj.stateParams.xp(:,end+1) = xp;
+            obj.stateParams.P(:,:,end+1) = P;
             
         end
         
         function S = getInnCovariance(obj)
+            
+            % get the model parameters
+            [~,H,~,R] = obj.getModelParams;
+            
+            % get the state variables
+            [~,~,P] = obj.getState;
+            
             % S is the covariance of the innovation vector
             % H*P_k|k-1*H.'+R?
-            S = obj.H*obj.P*obj.H.'+obj.R;
+            S = H*P*H.'+R;
             
         end
         

@@ -9,7 +9,7 @@ mapDims = [12 12];
 % dt   : time between measurements (Note: also used below)
 % now  : current time
 s = 0;
-e = 20;
+e = 10;
 dt = 0.1;
 n = s;
 
