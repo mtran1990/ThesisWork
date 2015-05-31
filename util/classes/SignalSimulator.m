@@ -178,12 +178,12 @@ classdef SignalSimulator < handle
         function iterSim(obj)
             
             % runs one iteration of the simulation
-            obj.advanceTime;
+            t = obj.advanceTime;
             
             loc = obj.getTgtLocNow;
             obj.measTgts(loc);
             obj.exchangeMeas;
-            obj.updateNodes;
+            obj.updateNodes(t);
         end        
         
         function initMap(obj,ax)
@@ -205,13 +205,49 @@ classdef SignalSimulator < handle
             
         end
         
+        function hidePlots(obj)
+            
+            fields = fieldnames(obj.gui);
+            
+            for k = 1:numel(fields)
+                
+                h = obj.gui.(fields{k});
+                if(~isempty(h))
+                    if(iscell(h))
+
+                        for j = 1:numel(h)
+
+                            h2 = h{j};
+                            set(h2,'visible','off');
+
+                        end
+
+                    else
+                        set(h,'visible','off');
+                    end
+                end
+                
+            end
+            
+        end
+        
         function N = getNumNodes(obj)
             N = length(obj.nodeList);
         end
         
-        function loc = getNodeLoc(obj)
-           
-            loc = [obj.nodeList.loc];
+        function N = getNumTracks(obj,idx)
+            
+            N = obj.nodeList(idx).getNumTracks;
+            
+        end
+        
+        function loc = getNodeLoc(obj,num)
+            
+            if(nargin<2)
+                loc = [obj.nodeList.loc];
+            else
+                loc = obj.nodeList(num).loc;
+            end
             
         end
         
@@ -277,16 +313,18 @@ classdef SignalSimulator < handle
             
         end
         
-        function updateNodes(obj)
+        function updateNodes(obj,t)
             
             for n = obj.nodeList                
-                n.updateTracks;                
+                n.updateTracks(t);                
             end
             
         end
         
-        function advanceTime(obj)
-            obj.tParams.now = obj.tParams.now+obj.tParams.dt;
+        function t = advanceTime(obj)
+            % t: the new current time
+            t = obj.tParams.now+obj.tParams.dt;
+            obj.tParams.now = t;
         end
         
         function loc = getTgtLocNow(obj)

@@ -52,9 +52,9 @@ classdef Node < handle
             
         end
         
-        function updateTracks(obj)
+        function updateTracks(obj,t)
             
-            obj.TrackManager.updateTrackStates;
+            obj.TrackManager.updateTrackStates(t);
             
         end
         
@@ -144,6 +144,13 @@ classdef Node < handle
             h = obj.TrackManager.plotTracks(ax,hand);            
             
         end
+        
+        function N = getNumTracks(obj)
+            
+            N = size(obj.TrackManager.trackStates,2);
+            
+        end
+        
     end
     
 end

@@ -15,13 +15,14 @@ classdef KCFilter < handle
         % xu: 4xN   updated state vector
         % xp: 4xN   predicted state
         % P : 4x4xN covariance matrix
+        % t : 1xN   time of update
         stateParams
         
         % information vector / matrix
         % the rest are temporary variables used when updating the filter
         u
         U
-        xdiff        
+        xdiff
         beta0
         pTild
                 
@@ -101,7 +102,7 @@ classdef KCFilter < handle
             end
         end
         
-        function updated = iterFilter(obj)
+        function updated = iterFilter(obj,t)
             
             % updated: true if filter updated with measurements
             %          false if filter updated with no measurements
@@ -153,7 +154,7 @@ classdef KCFilter < handle
                     
                 end
 
-                obj.updateState(xu,xp,P);
+                obj.updateState(xu,xp,P,t);
             
             else
                 
@@ -205,29 +206,33 @@ classdef KCFilter < handle
             
         end
         
-        function [xu,xp,P] = getState(obj,getAll)
+        function [xu,xp,P,t] = getState(obj,getAll)
             
             % usually only the most recent values are needed
             % if getAll is true, then, pull out all the state parameters
             if(nargin < 2 || ~getAll)
                 if(~isempty(obj.stateParams.xu))
                     xu = obj.stateParams.xu(:,end);
+                    t  = obj.stateParams.t(end);
                 else
                     xu = [];
+                    t  = [];
                 end
                 xp = obj.stateParams.xp(:,end);
-                P  = obj.stateParams.P(:,:,end);            
+                P  = obj.stateParams.P(:,:,end);
+                
             else
                 xu = obj.stateParams.xu;
                 xp = obj.stateParams.xp;
                 P  = obj.stateParams.P;
+                t  = obj.stateParams.t;
             end
         end
         
     end
     
     %% private methods
-    methods (Access = private)                
+    methods (Access = private)
         
         function initModel(obj)
             
@@ -252,7 +257,7 @@ classdef KCFilter < handle
         
         function initState(obj,x0,P0)
             
-            obj.stateParams = struct('xu',[],'xp',x0,'P',P0);
+            obj.stateParams = struct('xu',[],'xp',x0,'P',P0,'t',[]);
             
         end
         
@@ -358,11 +363,12 @@ classdef KCFilter < handle
             
         end
         
-        function updateState(obj,xu,xp,P)
+        function updateState(obj,xu,xp,P,t)
             
             obj.stateParams.xu(:,end+1) = xu;
             obj.stateParams.xp(:,end+1) = xp;
             obj.stateParams.P(:,:,end+1) = P;
+            obj.stateParams.t(:,end+1) = t;
             
         end
         

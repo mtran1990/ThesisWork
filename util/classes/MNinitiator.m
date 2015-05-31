@@ -115,7 +115,7 @@ classdef MNinitiator < handle
             end
         end
         
-        function updateTrackStates(obj)
+        function updateTrackStates(obj,t)
             
             % looking at all the tracks, there are three categories
             % 1) Not Valid Tracks: These aren't updated at all
@@ -126,7 +126,7 @@ classdef MNinitiator < handle
             
             N = length(tList);
             for k = 1:N
-                updated = tList(k).iterFilter;
+                updated = tList(k).iterFilter(t);
                 obj.iterState(updated,validTracks(k));
             end
             
@@ -174,26 +174,17 @@ classdef MNinitiator < handle
     %% private methods
     methods (Access = private)
         
-        function initTrack(obj,z)            
+        function initTrack(obj,z)
             
             % state vector is [x x' y y']
             x0 = [z(1); 0; z(2); 0];            
-            P0 = obj.genP0mat;            
-%             params = obj.genKFparams(x0,P0);
+            P0 = obj.genP0mat;
             
             if(isempty(obj.trackList))
                 obj.trackList = KCFilter(obj.sParams,x0,P0);
             else
                 obj.trackList = [obj.trackList KCFilter(obj.sParams,x0,P0)];
-            end            
-            
-        end
-                
-        function params = genKFparams(obj,x0,P0)
-            
-            params = obj.sParams;
-            params.x0 = x0;
-            params.P0 = P0;
+            end
             
         end
         
