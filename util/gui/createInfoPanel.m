@@ -1,4 +1,4 @@
-function p = createInfoPanel(f,ax,sim)
+function [p,infoTog] = createInfoPanel(f,ax,sim)
 
 p = uipanel(f,'title','Information','units','normalized',...
     'position',[0.75 0.55 0.2 0.4]);
@@ -13,10 +13,9 @@ for k = 1:n
 end
 
 %% add labels
-% num = sim.getNumNodes;
-% setTBoxTxt(tbox(1),'# of Nodes',num);
-% setTBoxTxt(tbox(2),'# of Targets',0);
 addTextLabels(tbox,sim);
+
+infoTog = @(popup)(addTextLabels(tbox,sim,popup));
 
 %% create buttons
 n = 2;
@@ -36,14 +35,14 @@ end
 
 function addTextLabels(tbox,sim,popup)
 
-c = get(tbox(1),'string');
+data = guidata(tbox(1));
 
-if(isempty(c) || ~strcmp(c(1),'#'))
+if(data.nodeMode)
 
     num = sim.getNumNodes;
     setTBoxTxt(tbox(1),'# of Nodes',num);
     setTBoxTxt(tbox(2),'# of Targets',0);
-
+    
 else
     
     idx = get(popup,'value');
@@ -54,6 +53,7 @@ else
     
     num = sim.getNumTracks(idx);
     setTBoxTxt(tbox(2),'# of Tracks',num);
+    
 end
 
 end

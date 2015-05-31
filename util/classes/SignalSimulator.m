@@ -85,7 +85,6 @@ classdef SignalSimulator < handle
                     option = 'on';
                 end
                 
-                % might have to do this in a for loop
                 set(obj.gui.nodeHandles,'visible',option);
                 
             end
@@ -129,7 +128,6 @@ classdef SignalSimulator < handle
                     option = 'on';
                 end
                 
-                % might have to do this in a for loop
                 set(obj.gui.connHandles,'visible',option);
                 
             end
@@ -197,11 +195,35 @@ classdef SignalSimulator < handle
             
         end
         
-        function showTracks(obj,pop,ax)
+        function showTracks(obj,ax,node)
+            % two ways to call the function, either plot the entire track
+            % or piece by piece
             
-            idx = get(pop,'value');            
-            obj.gui.trackHandles{idx} = ...
-                obj.nodeList(idx).plotTracks(ax,obj.gui.trackHandles{idx});
+            if(nargin == 3)
+                
+                h = obj.gui.trackHandles{node};
+                
+                if(isempty(h))
+                    obj.gui.trackHandles{node} = ...
+                        obj.nodeList(node).plotTracks(ax);
+                else
+                    str = get(h(1),'visible');
+                    
+                    if(strcmp(str,'on'))
+                        option = 'off';
+                    else
+                        option = 'on';
+                    end
+                    
+                    set(h,'visible',option);
+                end
+                
+            elseif(nargin == 4)
+                
+                
+                
+            end
+                
             
         end
         
@@ -238,6 +260,12 @@ classdef SignalSimulator < handle
         function N = getNumTracks(obj,idx)
             
             N = obj.nodeList(idx).getNumTracks;
+            
+        end
+        
+        function info = getTrackInfo(obj,node,track)
+            
+            info = obj.nodeList(node).getTrackInfo(track);
             
         end
         

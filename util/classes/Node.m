@@ -139,15 +139,24 @@ classdef Node < handle
             
         end
         
-        function h = plotTracks(obj,ax,hand)
+        function h = plotTracks(obj,ax)
             
-            h = obj.TrackManager.plotTracks(ax,hand);            
+            h = obj.TrackManager.plotTracks(ax);
             
         end
         
         function N = getNumTracks(obj)
             
             N = size(obj.TrackManager.trackStates,2);
+            
+        end
+        
+        function info = getTrackInfo(obj,track)
+            
+            [xu,xp,P,t] = ...
+                obj.TrackManager.trackList(track).getState(true);
+            
+            info = struct('xu',xu,'xp',xp,'P',P,'t',t);
             
         end
         

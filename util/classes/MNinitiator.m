@@ -132,41 +132,28 @@ classdef MNinitiator < handle
             
         end
         
-        function h = plotTracks(obj,ax,hand)
+        function h = plotTracks(obj,ax)
             
-            if(isempty(hand))
-                N = size(obj.trackList,2);
-                map = lines(N);
-                h = zeros(1,N);
-
-                hold on;
-                for k = 1:N
-                    
-                    [xu,xp,~] = obj.trackList(k).getState(true);
-                    
-                    if(isempty(xu))
-                        x = xp(1,:);
-                        y = xp(3,:);
-                    else
-                        x = xu(1,:);
-                        y = xu(3,:);
-                    end
-                    h(k) = plot(ax,x,y,'color',map(k,:));
-                end
-                hold off;
-            else
+            N = size(obj.trackList,2);
+            map = lines(N);
+            h = zeros(1,N);
+            
+            hold on;
+            for k = 1:N
                 
-                str = get(hand(1),'visible');
+                [xu,xp,~] = obj.trackList(k).getState(true);
                 
-                if(strcmp(str,'on'))
-                    option = 'off';
+                if(isempty(xu))
+                    x = xp(1,:);
+                    y = xp(3,:);
                 else
-                    option = 'on';
+                    x = xu(1,:);
+                    y = xu(3,:);
                 end
-                
-                set(hand,'visible',option);
-                h = hand;
+                h(k) = plot(ax,x,y,'color',map(k,:));
             end
+            hold off;
+            
         end
         
     end
@@ -378,10 +365,11 @@ classdef MNinitiator < handle
                         measInClus{i1} = [measInClus{i1} ...
                             measInClus{inew}];
                         
-                        % delete old row in vCopy and measInClus
-                        vCopy(inew,:) = [];
-                        measInClus(inew) = [];
                     end
+                    
+                    % delete old rows in vCopy and measInClus
+                    vCopy(idx(2:end),:) = [];
+                    measInClus(idx(2:end)) = [];
                     
                 end
                                 
