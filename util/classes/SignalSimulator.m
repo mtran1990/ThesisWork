@@ -15,6 +15,7 @@ classdef SignalSimulator < handle
         % gui:
         % nodeHandles: handles for the location of the nodes on the map
         % connHandles: handles for the lines between nodes
+        % poinHandles: handles for the point view
         gui
     end
     
@@ -195,7 +196,7 @@ classdef SignalSimulator < handle
             
         end
         
-        function showTracks(obj,ax,node)
+        function showTracks(obj,ax,node,track,t)
             % two ways to call the function, either plot the entire track
             % or piece by piece
             
@@ -218,9 +219,14 @@ classdef SignalSimulator < handle
                     set(h,'visible',option);
                 end
                 
-            elseif(nargin == 4)
+            elseif(nargin > 3)
                 
-                
+                if(~isempty(obj.gui.poinHandles))
+                    delete(obj.gui.poinHandles);
+                    obj.gui.poinHandles = [];
+                end
+                obj.gui.poinHandles = ...
+                    obj.nodeList(node).plotTracks(ax,track,t);
                 
             end
                 
@@ -306,7 +312,7 @@ classdef SignalSimulator < handle
         function initGUIstruct(obj)
             
             obj.gui = struct('nodeHandles',[],'connHandles',[],...
-                'trackHandles',[]);
+                'trackHandles',[],'poinHandles',[]);
             obj.gui.trackHandles = cell(1,obj.getNumNodes);
             
         end

@@ -34,6 +34,9 @@ classdef MNinitiator < handle
         % list of all tracks
         trackList
         
+        % list of all the measurements
+        zList
+        
         % 5xN vector tracking the state of N tracks
         % [s m mbar n nd]'
         % s    : deleted, tentative, or confirmed state (0, 1, or 2)
@@ -51,9 +54,13 @@ classdef MNinitiator < handle
         function obj = MNinitiator(tracker,sParams)
             obj.tracker = tracker;
             obj.sParams = sParams;
+            obj.zList = [];
         end
         
         function addMeasurement(obj, z)
+            
+            % add measurement to zList
+            obj.zList = [obj.zList {z}];
             
             if(isempty(obj.trackList))
                 
@@ -132,28 +139,57 @@ classdef MNinitiator < handle
             
         end
         
-        function h = plotTracks(obj,ax)
+        function h = plotTracks(obj,ax,track,t)
             
-            N = size(obj.trackList,2);
-            map = lines(N);
-            h = zeros(1,N);
-            
-            hold on;
-            for k = 1:N
-                
-                [xu,xp,~] = obj.trackList(k).getState(true);
-                
-                if(isempty(xu))
-                    x = xp(1,:);
-                    y = xp(3,:);
-                else
-                    x = xu(1,:);
-                    y = xu(3,:);
+            if(nargin == 2)
+                N = size(obj.trackList,2);
+                map = lines(N);
+                h = zeros(1,N);
+
+                hold on;
+                for k = 1:N
+
+                    [xu,xp,~] = obj.trackList(k).getState(true);
+
+                    if(isempty(xu))
+                        x = xp(1,:);
+                        y = xp(3,:);
+                    else
+                        x = xu(1,:);
+                        y = xu(3,:);
+                    end
+                    h(k) = plot(ax,x,y,'color',map(k,:));
                 end
-                h(k) = plot(ax,x,y,'color',map(k,:));
+                hold off;
+            elseif(nargin > 2)
+                
+                [xu,xp,P,t_] = obj.trackList(track).getState(true);
+                
+                
+                % find the closest time in t_ to t
+                [~,idx] = min(abs(t-t_));
+                
+                % predicted point
+                xp = xp([1 3],idx+1);
+                
+                % predicted ellipsoid gate
+                U = obj.trackList(track).getEllipsoidMat(P(:,:,idx+1));
+                n = 100;
+                th = linspace(0,2*pi,n);
+                ellips = xp*ones(1,n)+...
+                    sqrt(obj.sParams.gamG)*U.'*[cos(th); sin(th)];
+                
+                % measurements
+                z = obj.zList{idx+1};
+                
+                % plot everything
+                hold on;
+                h = plot(ax,xp(1,:),xp(2,:),'xr',...
+                    ellips(1,:),ellips(2,:),'b',...
+                    z(1,:),z(2,:),'og',...
+                    xu(1,1:idx),xu(3,1:idx),'r');
+                
             end
-            hold off;
-            
         end
         
     end

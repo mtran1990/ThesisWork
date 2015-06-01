@@ -116,7 +116,9 @@ if(data.nodeMode)
     
 else
     
-    disp('hi');
+    node = data.lastPopVal;
+    track = get(nodePop,'value');
+    sim.showTracks(ax,node,track,0);
     
 end
 

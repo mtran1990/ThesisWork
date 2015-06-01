@@ -189,12 +189,9 @@ classdef KCFilter < handle
             
             S = obj.getInnCovariance;
             
+            U_ = obj.factorS(S);
+            
             yhat = H*xp;
-            
-            % make sure S_ is symmetric
-            S_ = 0.5*(S+S.');
-            
-            U_ = cholcov(S_);
             
             testStat = norm( (U_.'\(y-yhat)), 2);
             
@@ -203,6 +200,24 @@ classdef KCFilter < handle
             else
                 inside = false;
             end
+            
+        end
+        
+        function U = factorS(~,S)
+            % make sure S_ is symmetric
+            S_ = 0.5*(S+S.');
+            
+            U = cholcov(S_);
+        end
+        
+        function U = getEllipsoidMat(obj,P)
+            
+            % get the model parameters
+            [~,H,~,R] = obj.getModelParams;
+            
+            S = H*P*H.'+R;
+            
+            U = obj.factorS(S);
             
         end
         
