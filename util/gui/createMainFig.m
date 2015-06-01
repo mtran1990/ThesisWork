@@ -38,8 +38,37 @@ nodeButtons(1) = uicontrol(p2,'Style','pushbutton','units','normalized',...
 
 nodeButtons(2) = uicontrol(p2,'Style','pushbutton','units','normalized',...
     'HorizontalAlignment','Left','string','Show Point View',...
-    'position',[0.05 0.4 0.9 0.2],...
-    'callback',@(~,~)toggleMode(nodePop,sim,infoTog));
+    'position',[0.05 0.4 0.9 0.2]);
+
+% create panel to show scroll through point-view
+timeBox(1) = uicontrol(p2,'Style','text','string','Current Time:',...
+    'units','normalized','HorizontalAlignment','Left','visible','off',...
+    'position',[0.05 0.3 0.9 0.1]);
+
+timeBox(2) = uicontrol(p2,'Style','text','string','Time Range (s):',...
+    'units','normalized','HorizontalAlignment','Left','visible','off',...
+    'position',[0.05 0.2 0.9 0.1]);
+
+timeBox(3) = uicontrol(p2,'Style','text','string','[0 0]',...
+    'units','normalized','HorizontalAlignment','Left','visible','off',...
+    'position',[0.05 0.1 0.9 0.1]);
+
+sBar = uicontrol(p2,'Style','slider','units','normalized',...
+    'position',[0.05 0 0.9 0.1],'visible','off');
+
+scrollHandles = [timeBox,sBar];
+
+% need to set callback for point-view button
+set(nodeButtons(2),...
+    'callback',@(nodeBut,~)toggleMode(nodeBut,nodePop,scrollHandles,sim,infoTog));
+
+% need to set callback for popup menu
+set(nodePop,...
+    'callback',@(~,~)popUpCallback(nodePop,scrollHandles));
+
+% need to set callback for slider
+set(sBar,...
+    'callback',@(h,eData)sliderCallback(h,ax,nodePop,scrollHandles,sim,eData));
 
 end
 
@@ -85,7 +114,75 @@ set(nodePop,'string',str);
 
 end
 
-function toggleMode(nodePop,sim,infoTog)
+function popUpCallback(nodePop,scrollHandles)
+
+data = guidata(nodePop);
+
+if(~data.nodeMode)
+    toggleScroll(nodePop,scrollHandles);    
+end
+
+end
+
+function toggleScroll(nodePop,scrollHandles)
+
+data = guidata(nodePop);
+
+if(data.nodeMode)
+    set(scrollHandles,'visible','off');
+else
+    % get the slider callback function and run it to update the map
+    initPlot = get(scrollHandles(end),'callback');
+    initPlot(scrollHandles(end),true);
+    
+    
+    
+    set(scrollHandles,'visible','on');
+end
+
+
+end
+
+function setTimeBoxes(scrollHandles,minT,maxT)
+
+t = get(scrollHandles(end),'value');
+str = sprintf('Current Time: %.2fs',t);
+set(scrollHandles(1),'string',str);
+str = sprintf('[%.2f %.2f]',minT,maxT);
+set(scrollHandles(3),'string',str);
+
+end
+
+function sliderCallback(h,ax,nodePop,scrollHandles,sim,bool)
+
+data = guidata(h);
+
+t = get(h,'value');
+node = data.lastPopVal;
+track = get(nodePop,'value');
+
+info = sim.nodeList(node).getTrackInfo(track);
+
+dt = sim.tParams.dt;
+maxT = max(info.t);
+minT = min(info.t);
+sliderStep(2) = 0.2;
+sliderStep(1) = dt/(maxT-minT);
+
+set(scrollHandles(end),'min',minT,'max',maxT,...
+    'sliderStep',sliderStep);
+
+if(bool)
+    set(scrollHandles(end),'value',minT);
+end
+
+setTimeBoxes(scrollHandles,minT,maxT);
+
+sim.showTracks(ax,node,track,t);
+
+end
+
+function toggleMode(nodeBut,nodePop,scrollHandles,sim,infoTog)
 
 sim.hidePlots;
 
@@ -93,15 +190,19 @@ data = guidata(nodePop);
 
 if(data.nodeMode)
     data.nodeMode = false;
+    str = 'Show Node View';
 else
     data.nodeMode = true;
+    str = 'Show Point View';
 end
+set(nodeBut,'string',str);
 data.lastPopVal = get(nodePop,'value');
 
 guidata(nodePop,data);
 
 infoTog(nodePop);
 togglePopup(nodePop,sim);
+toggleScroll(nodePop,scrollHandles);
 
 end
 
@@ -116,9 +217,9 @@ if(data.nodeMode)
     
 else
     
-    node = data.lastPopVal;
-    track = get(nodePop,'value');
-    sim.showTracks(ax,node,track,0);
+%     node = data.lastPopVal;
+%     track = get(nodePop,'value');
+%     sim.showTracks(ax,node,track,0);
     
 end
 
