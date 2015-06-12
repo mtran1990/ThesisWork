@@ -186,7 +186,19 @@ minT = min(info.t);
 sliderStep(2) = 0.2;
 sliderStep(1) = dt/(maxT-minT);
 
-set(scrollHandles(end),'min',minT,'max',maxT,...
+if(maxT == minT)
+    
+    % special case when there's only one measurement update
+    % maxT will be equal to minT
+    sliderStep(1) = 0.1;
+    
+    % make minT slightly smaller
+    minT2 = 0.99*minT;
+else
+    minT2 = minT;
+end
+
+set(scrollHandles(end),'min',minT2,'max',maxT,...
     'sliderStep',sliderStep);
 
 if(reset)

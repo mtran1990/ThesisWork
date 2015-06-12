@@ -11,7 +11,7 @@ freq = 0.1;
 % tgtPath = @(t)(circPath(A,freq,t));
 
 % two targets
-tgtPath = @(t)([circPath(A,freq,t) circPath(3*A,freq,t)]);
+tgtPath = @(t)([circPath(A,freq,t) circPath(3*A,freq,-t)]);
 %% Node Tests
 a = Node;
 b = Node(1,2);
