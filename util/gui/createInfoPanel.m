@@ -30,6 +30,9 @@ infoButtons(2) = uicontrol(p,'Style','pushbutton','units','normalized',...
     'position',[0.05 0.25 0.9 0.2],...
     'callback',@(~,~)sim.showConnections(ax));
 
+% show the connections and nodes by default
+sim.showMap(ax);
+sim.showConnections(ax);
 
 end
 

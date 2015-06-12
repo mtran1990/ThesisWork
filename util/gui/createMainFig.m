@@ -16,7 +16,7 @@ ax = axes('units','normalized','Position',[0.1 0.1 0.6 0.8]);
 
 sim.initMap(ax);
 %% create info panel
-[p,infoTog] = createInfoPanel(f,ax,sim);
+[p,infoPanelCallback] = createInfoPanel(f,ax,sim);
 
 %% create option panel
 p2 = uipanel(f,'title','Options','units','normalized',...
@@ -60,7 +60,7 @@ scrollHandles = [timeBox,sBar];
 
 % need to set callback for point-view button
 set(nodeButtons(2),...
-    'callback',@(nodeBut,~)toggleMode(nodeBut,nodePop,scrollHandles,sim,infoTog));
+    'callback',@(nodeBut,~)toggleMode(nodeBut));
 
 % need to set callback for popup menu
 set(nodePop,...
@@ -68,7 +68,23 @@ set(nodePop,...
 
 % need to set callback for slider
 set(sBar,...
-    'callback',@(h,eData)sliderCallback(h,ax,nodePop,scrollHandles,sim,eData));
+    'callback',@(h,~)updateSingleTrack(h,false));
+
+%% Store GUI handles and other info
+data = guidata(f);
+
+% infoPanel callback
+data.infoPanelCallback = infoPanelCallback;
+
+% pointer to simulation
+data.sim = sim;
+
+% GUI Handles
+handles = struct('ax',ax,'nodePop',nodePop,'nodeButtons',nodeButtons,...
+    'scrollHandles',scrollHandles);
+data.handles = handles;
+
+guidata(f,data);
 
 end
 
@@ -130,13 +146,8 @@ data = guidata(nodePop);
 
 if(data.nodeMode)
     set(scrollHandles,'visible','off');
-else
-    % get the slider callback function and run it to update the map
-    initPlot = get(scrollHandles(end),'callback');
-    initPlot(scrollHandles(end),true);
-    
-    
-    
+else    
+    updateSingleTrack(nodePop,true);
     set(scrollHandles,'visible','on');
 end
 
@@ -153,11 +164,17 @@ set(scrollHandles(3),'string',str);
 
 end
 
-function sliderCallback(h,ax,nodePop,scrollHandles,sim,bool)
+function updateSingleTrack(h,reset)
 
 data = guidata(h);
 
-t = get(h,'value');
+% pull out the handles / data for readability
+ax            = data.handles.ax;
+nodePop       = data.handles.nodePop;
+scrollHandles = data.handles.scrollHandles;
+sim           = data.sim;
+
+
 node = data.lastPopVal;
 track = get(nodePop,'value');
 
@@ -172,8 +189,11 @@ sliderStep(1) = dt/(maxT-minT);
 set(scrollHandles(end),'min',minT,'max',maxT,...
     'sliderStep',sliderStep);
 
-if(bool)
-    set(scrollHandles(end),'value',minT);
+if(reset)
+    set(scrollHandles(end),'Value',minT);
+    t = minT;
+else
+    t = get(h,'value');    
 end
 
 setTimeBoxes(scrollHandles,minT,maxT);
@@ -182,11 +202,17 @@ sim.showTracks(ax,node,track,t);
 
 end
 
-function toggleMode(nodeBut,nodePop,scrollHandles,sim,infoTog)
+function toggleMode(nodeBut)
+
+data = guidata(nodeBut);
+
+% pull out the handles / data for readability
+nodePop       = data.handles.nodePop;
+scrollHandles = data.handles.scrollHandles;
+sim           = data.sim;
+infoTog       = data.infoPanelCallback;
 
 sim.hidePlots;
-
-data = guidata(nodePop);
 
 if(data.nodeMode)
     data.nodeMode = false;

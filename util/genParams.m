@@ -61,7 +61,7 @@ Kap   = 3;
 Pd    = 0.95;
 Pg    = 0.95;
 gamG  = chi2inv(Pg,dim);
-Bfa   = 1E-5;
+Bfa   = 1E-4;
 V     = mapDims(1)*mapDims(2);
 
 sParams = struct('dim',dim,'maxV',maxV,'dt',dt,'sigA2',sigA2,...
